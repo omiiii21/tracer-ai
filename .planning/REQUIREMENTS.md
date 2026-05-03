@@ -7,7 +7,7 @@
 
 Requirements for initial release. Each maps to roadmap phases.
 
-### Design (Phase −1 deliverables)
+### Design (Phase 1 deliverables)
 
 - [ ] **DSGN-01**: All `[GSD-OPEN-N]` items from PRD §10 resolved as ADRs in `/docs/decisions/NNN-<slug>.md` (one ADR per item, with context/options/decision/consequences)
 - [ ] **DSGN-02**: System architecture diagram (Mermaid `graph` or `flowchart`) at `/docs/architecture.md` showing frontend/backend/data stores/external APIs
@@ -20,7 +20,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **DSGN-09**: Risk + scope-trim plan documented (which phases get cut first if budget slips >25%)
 - [ ] **DSGN-10**: Proactive coverage regression query set (10+ queries) authored, covering each major Claude API doc section (auth, models, prompts, tools, batches, files, citations, vision)
 
-### Infrastructure (Phase 0)
+### Infrastructure (Phase 2)
 
 - [ ] **INFRA-01**: Repo scaffold per ARCHITECTURE.md module layout (backend `tracer_ai/`, `frontend/`, `infra/`)
 - [ ] **INFRA-02**: `docker compose up` boots full stack green: FastAPI hello-world, Vite hello-world, Postgres 16 with pgvector extension
@@ -28,7 +28,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **INFRA-04**: Pre-commit hooks active: `ruff`, `mypy --strict`, frontend `tsc`, basic test runner
 - [ ] **INFRA-05**: README skeleton with setup steps; `mkdir -p docs/decisions/` exists for ADRs
 
-### Corpus (Phase 1)
+### Corpus (Phase 3)
 
 - [ ] **CORP-01**: `tracer-ai ingest --source claude-docs` CLI pulls/parses Claude API + Agent SDK docs (markdown + HTML)
 - [ ] **CORP-02**: Markdown-header-aware chunker splits docs at `##`/`###` boundaries; configurable chunk size + overlap; never splits inside fenced code blocks
@@ -36,7 +36,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **CORP-04**: Startup assertion fails fast if `config.embedding_model` does not match corpus metadata
 - [ ] **CORP-05**: Embedder Protocol with Voyage AI `voyage-code-3` adapter (primary) and sentence-transformers adapter (offline fallback)
 
-### RAG Pipeline (Phase 1)
+### RAG Pipeline (Phase 3)
 
 - [ ] **RAG-01**: Retriever Protocol with pgvector adapter; configurable `top_k` (default 5)
 - [ ] **RAG-02**: Prompt assembler builds final prompt with citation formatting (chunks delimited so they cannot inject as instructions)
@@ -45,7 +45,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **RAG-05**: `POST /chat` endpoint accepts query, returns answer + cited source chunks + latency + token count + estimated cost + `trace_id`
 - [ ] **RAG-06**: End-to-end answer latency < 5s for typical query (single-user local target)
 
-### Chat UI (Phase 1)
+### Chat UI (Phase 3)
 
 - [ ] **CHAT-01**: Single-turn or multi-turn (within session) conversational interface at `/chat`
 - [ ] **CHAT-02**: Each message renders answer + cited source chunks (clickable to expand chunk text)
@@ -53,14 +53,14 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **CHAT-04**: Each message has thumbs-up / thumbs-down controls; thumbs-down opens free-text comment box
 - [ ] **CHAT-05**: Each message has a link to its full trace in the Trace Explorer
 
-### Admin UI (Phase 1)
+### Admin UI (Phase 3)
 
 - [ ] **ADMN-01**: `/admin` route shows current corpus: doc list, chunk count, embedding model, last-indexed timestamp
 - [ ] **ADMN-02**: Re-index button triggers ingestion via API call; shows progress
 - [ ] **ADMN-03**: Chunking config form (size, overlap) — values persist and apply on next re-index
 - [ ] **ADMN-04**: URL-list textarea for ingesting from URLs (drag-drop optional)
 
-### Tracer (Phase 2)
+### Tracer (Phase 4)
 
 - [ ] **TRCR-01**: Span dataclass in `tracer/span.py` with OTel-aligned + RAG-specific attributes; all attribute names defined as constants in one file
 - [ ] **TRCR-02**: Use `gen_ai.provider.name` (NOT deprecated `gen_ai.system`); follow OTel GenAI naming for `gen_ai.operation.name`, `gen_ai.request.model`, `gen_ai.usage.input_tokens`, `gen_ai.usage.output_tokens`
@@ -73,14 +73,14 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **TRCR-09**: Full prompt + response payloads stored in `span_payloads` side table (JSONB) — referenced by `span_id`, not on span row directly
 - [ ] **TRCR-10**: Every chat request emits trace with spans `rag.request` (root) → `rag.retrieve`, `rag.prompt_assemble`, `rag.llm_call`
 
-### Trace Explorer (Phase 2)
+### Trace Explorer (Phase 4)
 
 - [ ] **EXPL-01**: `GET /traces` endpoint supports filtering by query text, time range, feedback rating, faithfulness score, latency bucket
 - [ ] **EXPL-02**: `GET /traces/{id}` returns full trace tree (root + all spans + payloads)
 - [ ] **EXPL-03**: `/dashboard` trace list view: searchable/filterable table with columns for query, time, latency, cost, faithfulness, feedback
 - [ ] **EXPL-04**: Trace detail view shows span waterfall (timing) and payload inspectors (chunks with scores, full assembled prompt, full LLM response)
 
-### Eval / Quality Layer (Phase 3)
+### Eval / Quality Layer (Phase 5)
 
 - [ ] **EVAL-01**: LLM-as-judge worker scores `faithfulness` and `relevance` for every trace; uses date-pinned `claude-haiku-*` snapshot
 - [ ] **EVAL-02**: Judge runs async via FastAPI `BackgroundTasks` after response flush; eval failure must NEVER fail user request
@@ -89,7 +89,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **EVAL-05**: Faithfulness score appears on trace within ~30s of request
 - [ ] **EVAL-06**: Calibration step: hand-label ~30 traces (good and bad) and tune the bad-answer threshold against them; document in ADR
 
-### Feedback (Phase 3)
+### Feedback (Phase 5)
 
 - [ ] **FBCK-01**: `POST /feedback` accepts `{trace_id, rating, comment}`; persists to `feedback` table
 - [ ] **FBCK-02**: Thumbs-down lands the trace in the bad-answer queue within seconds
@@ -99,7 +99,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **FBCK-06**: Bad-answer queue sorted by score (lowest faithfulness first); items auto-close on subsequent re-pass
 - [ ] **FBCK-07**: Dashboard widget: queue size + items resolved this week
 
-### Dashboard Metrics (Phase 3)
+### Dashboard Metrics (Phase 5)
 
 - [ ] **DASH-01**: Time-series chart: latency p50/p95 over configurable window (default 24h)
 - [ ] **DASH-02**: Time-series chart: cost over time
@@ -108,19 +108,19 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **DASH-05**: Overview metrics card: request volume, total tokens, total cost, faithfulness score distribution
 - [ ] **DASH-06**: Charts implemented via Tremor v3 components
 
-### Eval CLI (Phase 4)
+### Eval CLI (Phase 6)
 
 - [ ] **CLI-01**: `tracer-ai eval` runs the curated regression query set against the live pipeline
-- [ ] **CLI-02**: CLI runs BOTH proactive coverage set (from Phase −1) AND reactive promoted set
+- [ ] **CLI-02**: CLI runs BOTH proactive coverage set (from Phase 1) AND reactive promoted set
 - [ ] **CLI-03**: Reports per-query pass/fail, faithfulness score, latency, cost
 - [ ] **CLI-04**: Aggregate report in markdown or JSON
 - [ ] **CLI-05**: `tracer-ai promote <trace_id>` command adds a trace to the regression set (callable from bad-answer queue UI as well)
 - [ ] **CLI-06**: CLI auto-closes bad-answer queue items whose subsequent re-runs pass (mark "self-resolved")
 - [ ] **CLI-07**: CLI failures correctly identify deliberately-corrupted prompt templates (verifies the regression loop works)
 
-### Demo & Polish (Phase 5)
+### Demo & Polish (Phase 7)
 
-- [ ] **DEMO-01**: README includes architecture diagram (from Phase −1) and setup steps verified on a fresh machine
+- [ ] **DEMO-01**: README includes architecture diagram (from Phase 1) and setup steps verified on a fresh machine
 - [ ] **DEMO-02**: GIF or screenshots of trace explorer + bad-answer queue embedded in README
 - [ ] **DEMO-03**: Cost widget on dashboard
 - [ ] **DEMO-04**: "Export trace as JSON" button on trace detail
@@ -171,88 +171,88 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DSGN-01 | Phase −1 | Pending |
-| DSGN-02 | Phase −1 | Pending |
-| DSGN-03 | Phase −1 | Pending |
-| DSGN-04 | Phase −1 | Pending |
-| DSGN-05 | Phase −1 | Pending |
-| DSGN-06 | Phase −1 | Pending |
-| DSGN-07 | Phase −1 | Pending |
-| DSGN-08 | Phase −1 | Pending |
-| DSGN-09 | Phase −1 | Pending |
-| DSGN-10 | Phase −1 | Pending |
-| INFRA-01 | Phase 0 | Pending |
-| INFRA-02 | Phase 0 | Pending |
-| INFRA-03 | Phase 0 | Pending |
-| INFRA-04 | Phase 0 | Pending |
-| INFRA-05 | Phase 0 | Pending |
-| CORP-01 | Phase 1 | Pending |
-| CORP-02 | Phase 1 | Pending |
-| CORP-03 | Phase 1 | Pending |
-| CORP-04 | Phase 1 | Pending |
-| CORP-05 | Phase 1 | Pending |
-| RAG-01 | Phase 1 | Pending |
-| RAG-02 | Phase 1 | Pending |
-| RAG-03 | Phase 1 | Pending |
-| RAG-04 | Phase 1 | Pending |
-| RAG-05 | Phase 1 | Pending |
-| RAG-06 | Phase 1 | Pending |
-| CHAT-01 | Phase 1 | Pending |
-| CHAT-02 | Phase 1 | Pending |
-| CHAT-03 | Phase 1 | Pending |
-| CHAT-04 | Phase 1 | Pending |
-| CHAT-05 | Phase 1 | Pending |
-| ADMN-01 | Phase 1 | Pending |
-| ADMN-02 | Phase 1 | Pending |
-| ADMN-03 | Phase 1 | Pending |
-| ADMN-04 | Phase 1 | Pending |
-| TRCR-01 | Phase 2 | Pending |
-| TRCR-02 | Phase 2 | Pending |
-| TRCR-03 | Phase 2 | Pending |
-| TRCR-04 | Phase 2 | Pending |
-| TRCR-05 | Phase 2 | Pending |
-| TRCR-06 | Phase 2 | Pending |
-| TRCR-07 | Phase 2 | Pending |
-| TRCR-08 | Phase 2 | Pending |
-| TRCR-09 | Phase 2 | Pending |
-| TRCR-10 | Phase 2 | Pending |
-| EXPL-01 | Phase 2 | Pending |
-| EXPL-02 | Phase 2 | Pending |
-| EXPL-03 | Phase 2 | Pending |
-| EXPL-04 | Phase 2 | Pending |
-| EVAL-01 | Phase 3 | Pending |
-| EVAL-02 | Phase 3 | Pending |
-| EVAL-03 | Phase 3 | Pending |
-| EVAL-04 | Phase 3 | Pending |
-| EVAL-05 | Phase 3 | Pending |
-| EVAL-06 | Phase 3 | Pending |
-| FBCK-01 | Phase 3 | Pending |
-| FBCK-02 | Phase 3 | Pending |
-| FBCK-03 | Phase 3 | Pending |
-| FBCK-04 | Phase 3 | Pending |
-| FBCK-05 | Phase 3 | Pending |
-| FBCK-06 | Phase 3 | Pending |
-| FBCK-07 | Phase 3 | Pending |
-| DASH-01 | Phase 3 | Pending |
-| DASH-02 | Phase 3 | Pending |
-| DASH-03 | Phase 3 | Pending |
-| DASH-04 | Phase 3 | Pending |
-| DASH-05 | Phase 3 | Pending |
-| DASH-06 | Phase 3 | Pending |
-| CLI-01 | Phase 4 | Pending |
-| CLI-02 | Phase 4 | Pending |
-| CLI-03 | Phase 4 | Pending |
-| CLI-04 | Phase 4 | Pending |
-| CLI-05 | Phase 4 | Pending |
-| CLI-06 | Phase 4 | Pending |
-| CLI-07 | Phase 4 | Pending |
-| DEMO-01 | Phase 5 | Pending |
-| DEMO-02 | Phase 5 | Pending |
-| DEMO-03 | Phase 5 | Pending |
-| DEMO-04 | Phase 5 | Pending |
-| DEMO-05 | Phase 5 | Pending |
-| DEMO-06 | Phase 5 | Pending |
-| DEMO-07 | Phase 5 | Pending |
+| DSGN-01 | Phase 1 | Pending |
+| DSGN-02 | Phase 1 | Pending |
+| DSGN-03 | Phase 1 | Pending |
+| DSGN-04 | Phase 1 | Pending |
+| DSGN-05 | Phase 1 | Pending |
+| DSGN-06 | Phase 1 | Pending |
+| DSGN-07 | Phase 1 | Pending |
+| DSGN-08 | Phase 1 | Pending |
+| DSGN-09 | Phase 1 | Pending |
+| DSGN-10 | Phase 1 | Pending |
+| INFRA-01 | Phase 2 | Pending |
+| INFRA-02 | Phase 2 | Pending |
+| INFRA-03 | Phase 2 | Pending |
+| INFRA-04 | Phase 2 | Pending |
+| INFRA-05 | Phase 2 | Pending |
+| CORP-01 | Phase 3 | Pending |
+| CORP-02 | Phase 3 | Pending |
+| CORP-03 | Phase 3 | Pending |
+| CORP-04 | Phase 3 | Pending |
+| CORP-05 | Phase 3 | Pending |
+| RAG-01 | Phase 3 | Pending |
+| RAG-02 | Phase 3 | Pending |
+| RAG-03 | Phase 3 | Pending |
+| RAG-04 | Phase 3 | Pending |
+| RAG-05 | Phase 3 | Pending |
+| RAG-06 | Phase 3 | Pending |
+| CHAT-01 | Phase 3 | Pending |
+| CHAT-02 | Phase 3 | Pending |
+| CHAT-03 | Phase 3 | Pending |
+| CHAT-04 | Phase 3 | Pending |
+| CHAT-05 | Phase 3 | Pending |
+| ADMN-01 | Phase 3 | Pending |
+| ADMN-02 | Phase 3 | Pending |
+| ADMN-03 | Phase 3 | Pending |
+| ADMN-04 | Phase 3 | Pending |
+| TRCR-01 | Phase 4 | Pending |
+| TRCR-02 | Phase 4 | Pending |
+| TRCR-03 | Phase 4 | Pending |
+| TRCR-04 | Phase 4 | Pending |
+| TRCR-05 | Phase 4 | Pending |
+| TRCR-06 | Phase 4 | Pending |
+| TRCR-07 | Phase 4 | Pending |
+| TRCR-08 | Phase 4 | Pending |
+| TRCR-09 | Phase 4 | Pending |
+| TRCR-10 | Phase 4 | Pending |
+| EXPL-01 | Phase 4 | Pending |
+| EXPL-02 | Phase 4 | Pending |
+| EXPL-03 | Phase 4 | Pending |
+| EXPL-04 | Phase 4 | Pending |
+| EVAL-01 | Phase 5 | Pending |
+| EVAL-02 | Phase 5 | Pending |
+| EVAL-03 | Phase 5 | Pending |
+| EVAL-04 | Phase 5 | Pending |
+| EVAL-05 | Phase 5 | Pending |
+| EVAL-06 | Phase 5 | Pending |
+| FBCK-01 | Phase 5 | Pending |
+| FBCK-02 | Phase 5 | Pending |
+| FBCK-03 | Phase 5 | Pending |
+| FBCK-04 | Phase 5 | Pending |
+| FBCK-05 | Phase 5 | Pending |
+| FBCK-06 | Phase 5 | Pending |
+| FBCK-07 | Phase 5 | Pending |
+| DASH-01 | Phase 5 | Pending |
+| DASH-02 | Phase 5 | Pending |
+| DASH-03 | Phase 5 | Pending |
+| DASH-04 | Phase 5 | Pending |
+| DASH-05 | Phase 5 | Pending |
+| DASH-06 | Phase 5 | Pending |
+| CLI-01 | Phase 6 | Pending |
+| CLI-02 | Phase 6 | Pending |
+| CLI-03 | Phase 6 | Pending |
+| CLI-04 | Phase 6 | Pending |
+| CLI-05 | Phase 6 | Pending |
+| CLI-06 | Phase 6 | Pending |
+| CLI-07 | Phase 6 | Pending |
+| DEMO-01 | Phase 7 | Pending |
+| DEMO-02 | Phase 7 | Pending |
+| DEMO-03 | Phase 7 | Pending |
+| DEMO-04 | Phase 7 | Pending |
+| DEMO-05 | Phase 7 | Pending |
+| DEMO-06 | Phase 7 | Pending |
+| DEMO-07 | Phase 7 | Pending |
 
 **Coverage:**
 - v1 requirements: 75 total
@@ -261,4 +261,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-05-04*
-*Last updated: 2026-05-04 after initial definition*
+*Last updated: 2026-05-04 — traceability updated to GSD phase numbers 1-7 (Phase −1 → 1, Phase 0 → 2, PRD Phase 1 → 3, PRD Phase 2 → 4, PRD Phase 3 → 5, PRD Phase 4 → 6, PRD Phase 5 → 7)*
