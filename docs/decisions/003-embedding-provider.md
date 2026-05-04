@@ -37,7 +37,7 @@ tracer-ai will use **Voyage AI `voyage-code-3`** (1024-dim) as the primary embed
 - The two embedders have different dimensions (1024 vs 768), so switching providers requires a full re-index — but the metadata mandate ensures we will know when to do it.
 
 **Mandatory follow-ups:**
-- [ ] Verify Voyage pricing at https://docs.voyageai.com/docs/pricing before INFRA-01 closes (Phase 2 prereq, not a Phase 1 blocker).
+- [x] Verified Voyage AI pricing 2026-05-04: `voyage-code-3` covered by 200M-token free tier per account (cumulative, not monthly-resetting); paid rate $0.18/1M tokens if exceeded. Phase 3 corpus ingestion (~25M tokens for ~50K chunks × ~500 tokens/chunk) is well under the free tier; no paid spend required to close INFRA-01. Source: https://docs.voyageai.com/docs/pricing checked via RESEARCH.md Topic 8 WebFetch on 2026-05-04. Per `--auto` chain (`/gsd-discuss-phase 2 --auto` → `/gsd-plan-phase 2 --auto` → `/gsd-execute-phase 2 --auto`), operator pre-authorized the free-tier path.
 - [ ] Add startup assertion `config.embedding_model == corpus.embedding_model` in `tracer_ai/api/app.py` lifespan handler (Pitfall #3 mitigation).
 - [ ] `chunks` table migration records `embedding_model TEXT NOT NULL`, `embedding_model_version TEXT NOT NULL`, `indexed_at TIMESTAMPTZ NOT NULL` (per D-49).
 - [ ] Both adapters implement the same `Embedder` Protocol so pipeline code is provider-agnostic.
