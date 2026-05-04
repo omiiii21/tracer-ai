@@ -12,7 +12,7 @@ tracer-ai is built in seven phases that honor a design-first discipline: Phase 1
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Research & Design Artifacts** - Produce all ADRs, diagrams, specs, and wireframes; no code until done
+- [x] **Phase 1: Research & Design Artifacts** - Produce all ADRs, diagrams, specs, and wireframes; no code until done
 - [ ] **Phase 2: Skeleton & Infrastructure** - Repo scaffold, Docker Compose boots green, pre-commit hooks, README skeleton
 - [ ] **Phase 3: RAG Pipeline + Chat UI + Corpus Admin** - Working RAG chat with citations, corpus ingestion CLI, admin UI
 - [ ] **Phase 4: Tracer + Trace Explorer** - Span emission, async trace write path, trace list/detail dashboard views
@@ -113,7 +113,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Research & Design Artifacts | 7/8 | In Progress | - |
+| 1. Research & Design Artifacts | 8/8 | Complete | 2026-05-04 |
 | 2. Skeleton & Infrastructure | 0/TBD | Not started | - |
 | 3. RAG Pipeline + Chat UI + Corpus Admin | 0/TBD | Not started | - |
 | 4. Tracer + Trace Explorer | 0/TBD | Not started | - |
