@@ -60,7 +60,7 @@ files = ["tracer_ai"]
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
-module = ["voyageai.*", "pgvector.*", "sentence_transformers.*", "tiktoken.*"]
+module = ["asyncpg.*", "voyageai.*", "pgvector.*", "sentence_transformers.*", "tiktoken.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

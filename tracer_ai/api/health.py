@@ -44,7 +44,7 @@ async def healthz(request: Request, response: Response) -> HealthResponse:
     try:
         async with pool.acquire(timeout=0.5) as conn:
             await asyncio.wait_for(conn.fetchval("SELECT 1"), timeout=0.5)
-    except (asyncio.TimeoutError, asyncpg.PostgresError, OSError) as e:
+    except (TimeoutError, asyncpg.PostgresError, OSError) as e:
         log.warning("healthz_db_probe_failed", error=str(e))
         response.status_code = 503
         return HealthResponse(status="degraded", version=__version__, db="unreachable")
