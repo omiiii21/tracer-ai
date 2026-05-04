@@ -1,0 +1,104 @@
+# /docs/eval/coverage_set.yaml
+# Proactive coverage regression query set for tracer-ai (DSGN-10)
+# 12 queries — exceeds DSGN-10 floor of 10
+#
+# Authoring constraints (D-31 through D-35):
+#   - Hand-curated against Claude API docs TOC (NOT LLM-generated)
+#   - No ground-truth answer text — asserts retrieval coverage only
+#   - expected_min_score: 0.6 (initial; calibrated in Phase 5 EVAL-06)
+#
+# Schema per entry (D-32):
+#   id: COV-NN (zero-padded 2-digit, sequential)
+#   query: str — the user-facing question text
+#   doc_section: str — canonical taxonomy (must match Phase 3 chunker)
+#   expected_chunk_keywords: list[str] — at least one MUST appear in retrieved chunks
+#   expected_min_score: float — initial 0.6; tuned by EVAL-06
+#   notes: str — provenance / source URL hint
+#
+# Phase 6 CLI-02 (eval/regression.py) loads this file via yaml.safe_load()
+# and asserts retrieval coverage per query. Phase 5 may rewrite
+# expected_min_score and expected_chunk_keywords during calibration.
+
+- id: COV-01
+  query: "How do I authenticate to the Anthropic Messages API?"
+  doc_section: auth
+  expected_chunk_keywords: ["x-api-key", "authentication", "API key", "Authorization"]
+  expected_min_score: 0.6
+  notes: "Covers /api/getting-started auth section."
+
+- id: COV-02
+  query: "What Claude models are available and what are their context window sizes?"
+  doc_section: models
+  expected_chunk_keywords: ["claude-sonnet-4-5", "claude-haiku", "context window", "200k"]
+  expected_min_score: 0.6
+  notes: "Covers /docs/about-claude/models."
+
+- id: COV-03
+  query: "How do I send a basic prompt to Claude using the Messages API?"
+  doc_section: messages
+  expected_chunk_keywords: ["messages.create", "role", "content", "user", "assistant"]
+  expected_min_score: 0.6
+  notes: "Covers /api/messages basic prompt structure."
+
+- id: COV-04
+  query: "How do I define and use tools with Claude (tool use / function calling)?"
+  doc_section: tools
+  expected_chunk_keywords: ["tools", "tool_use", "input_schema", "tool_result"]
+  expected_min_score: 0.6
+  notes: "Covers /docs/agents-and-tools/tool-use."
+
+- id: COV-05
+  query: "How do I submit batch requests to Claude for cheaper async processing?"
+  doc_section: batches
+  expected_chunk_keywords: ["batches", "Message Batches", "50% discount", "24 hours"]
+  expected_min_score: 0.6
+  notes: "Covers /docs/build-with-claude/batch-processing."
+
+- id: COV-06
+  query: "How do I upload and reference files in a Claude conversation?"
+  doc_section: files
+  expected_chunk_keywords: ["Files API", "file_id", "upload", "type: file"]
+  expected_min_score: 0.6
+  notes: "Covers /docs/build-with-claude/files."
+
+- id: COV-07
+  query: "How do I get Claude to cite its sources from documents I provide?"
+  doc_section: citations
+  expected_chunk_keywords: ["citations", "cited_text", "document_index", "supported_text"]
+  expected_min_score: 0.6
+  notes: "Covers /docs/build-with-claude/citations."
+
+- id: COV-08
+  query: "How do I send images to Claude for analysis?"
+  doc_section: vision
+  expected_chunk_keywords: ["vision", "image", "base64", "media_type", "image_url"]
+  expected_min_score: 0.6
+  notes: "Covers /docs/build-with-claude/vision."
+
+- id: COV-09
+  query: "What error codes does the Claude API return and what do rate limits look like?"
+  doc_section: errors-and-rate-limits
+  expected_chunk_keywords: ["429", "rate_limit_error", "retry-after", "tokens per minute", "TPM"]
+  expected_min_score: 0.6
+  notes: "Covers /api/errors and /api/rate-limits."
+
+- id: COV-10
+  query: "How does prompt caching work and what are the cost savings?"
+  doc_section: prompt-caching
+  expected_chunk_keywords: ["cache_control", "ephemeral", "cache hit", "90%", "5 minutes"]
+  expected_min_score: 0.6
+  notes: "Covers /docs/build-with-claude/prompt-caching."
+
+- id: COV-11
+  query: "What is the Claude Agent SDK and what does it provide?"
+  doc_section: agent-sdk-overview
+  expected_chunk_keywords: ["Agent SDK", "claude-agent-sdk", "subagents", "harness", "ClaudeAgentOptions"]
+  expected_min_score: 0.6
+  notes: "Covers /docs/claude-agent-sdk overview."
+
+- id: COV-12
+  query: "How do I add a custom MCP tool to a Claude agent using the Agent SDK?"
+  doc_section: agent-sdk-tools
+  expected_chunk_keywords: ["MCP", "Model Context Protocol", "tool", "in-process", "create_sdk_mcp_server"]
+  expected_min_score: 0.6
+  notes: "Covers /docs/claude-agent-sdk/mcp."
