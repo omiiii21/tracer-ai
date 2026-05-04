@@ -1,0 +1,48 @@
+# syntax=docker/dockerfile:1.7
+# Multi-stage Dockerfile for tracer-ai frontend
+# Per D-2.13: stages are base / deps / dev / build / prod (prod NOT BUILT in Phase 2)
+# Per RESEARCH.md Topic 10: anonymous /app/node_modules volume + Vite polling watcher
+
+ARG NODE_VERSION=20.18.0
+
+# ============================================================================
+# STAGE 1: base -- node:20-alpine
+# ============================================================================
+FROM node:20.18.0-alpine AS base
+WORKDIR /app
+ENV NODE_ENV=development
+
+# ============================================================================
+# STAGE 2: deps -- npm ci (cacheable)
+# ============================================================================
+FROM base AS deps
+COPY frontend/package.json ./
+# package-lock.json is created by Wave 5 via `npm install`. Until Wave 5 ships
+# the full pinned package.json, this stage installs minimal placeholder deps.
+# Wave 5 plan replaces this entire COPY+RUN with the real pinned set.
+RUN if [ -f /app/package-lock.json ]; then npm ci; else npm install; fi
+
+# ============================================================================
+# STAGE 3: dev -- compose targets this; source bind-mounted at runtime
+# ============================================================================
+FROM deps AS dev
+COPY frontend ./
+EXPOSE 5173
+ENV CHOKIDAR_USEPOLLING=true
+# Run as the existing `node` user (uid 1000 in node:alpine images) -- non-root
+USER node
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]
+
+# ============================================================================
+# STAGE 4: build -- produces /app/dist for prod nginx-serve
+# ============================================================================
+FROM deps AS build
+COPY frontend ./
+RUN npm run build
+
+# ============================================================================
+# STAGE 5: prod -- NOT BUILT in Phase 2
+# ============================================================================
+FROM nginx:1.27-alpine AS prod
+COPY --from=build /app/dist /usr/share/nginx/html
+EXPOSE 80

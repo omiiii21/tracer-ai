@@ -1,0 +1,12 @@
+{
+  "name": "tracer-ai-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "echo 'Wave 5 fills Vite dev script' && sleep infinity",
+    "build": "echo 'Wave 5 fills Vite build script'"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}
