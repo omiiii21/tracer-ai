@@ -82,12 +82,19 @@ services:
     volumes:
       - ../frontend/src:/app/src
       - ../frontend/index.html:/app/index.html
+      - ../frontend/vite.config.ts:/app/vite.config.ts:ro
+      - ../frontend/tailwind.config.js:/app/tailwind.config.js:ro
+      - ../frontend/postcss.config.js:/app/postcss.config.js:ro
+      - ../frontend/tsconfig.json:/app/tsconfig.json:ro
+      - ../frontend/tsconfig.node.json:/app/tsconfig.node.json:ro
+      - ../frontend/components.json:/app/components.json:ro
       - /app/node_modules  # anonymous volume (Pitfall 5) -- preserves container's installed deps
     environment:
       CHOKIDAR_USEPOLLING: "true"
-    # WAVE 2 PLACEHOLDER -- Wave 5 plan ships real Vite scaffold; until then container
-    # comes up but doesn't serve (no /app/src yet). Healthcheck NOT defined per D-2.34.
-    command: ["sleep", "infinity"]
+    # Wave 5 (this plan): NO command override. Dockerfile.frontend dev stage
+    # CMD runs `npm run dev -- --host 0.0.0.0 --port 5173`. Healthcheck NOT
+    # defined per D-2.34 (Vite dev server too noisy for compose probes; Wave 5
+    # production image will add nginx healthcheck).
 
 volumes:
   db_data:

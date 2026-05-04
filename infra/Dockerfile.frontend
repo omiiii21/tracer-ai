@@ -16,28 +16,34 @@ ENV NODE_ENV=development
 # STAGE 2: deps -- npm ci (cacheable)
 # ============================================================================
 FROM base AS deps
-COPY frontend/package.json ./
-# package-lock.json is created by Wave 5 via `npm install`. Until Wave 5 ships
-# the full pinned package.json, this stage installs minimal placeholder deps.
-# Wave 5 plan replaces this entire COPY+RUN with the real pinned set.
+# Make /app owned by node user up-front so subsequent COPY --chown and the
+# running Vite dev server can write sibling files (e.g. vite.config.ts.timestamp-*.mjs
+# that Vite emits when bundling the config). Plan 02-05 Rule 1 fix: without
+# chown, the dev stage fails with EACCES when the `node` user tries to write
+# the timestamp temp file into the root-owned /app/.
+RUN chown -R node:node /app
+USER node
+COPY --chown=node:node frontend/package.json frontend/package-lock.json* ./
+# Wave 5 (Plan 02-05) ships frontend/package-lock.json -- prefer `npm ci` for
+# deterministic, reproducible installs. Fallback to `npm install` keeps the
+# stage usable if a future plan ever drops the lockfile.
 RUN if [ -f /app/package-lock.json ]; then npm ci; else npm install; fi
 
 # ============================================================================
 # STAGE 3: dev -- compose targets this; source bind-mounted at runtime
 # ============================================================================
 FROM deps AS dev
-COPY frontend ./
+COPY --chown=node:node frontend ./
 EXPOSE 5173
 ENV CHOKIDAR_USEPOLLING=true
-# Run as the existing `node` user (uid 1000 in node:alpine images) -- non-root
-USER node
+# `node` user already active from deps stage (uid 1000)
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]
 
 # ============================================================================
 # STAGE 4: build -- produces /app/dist for prod nginx-serve
 # ============================================================================
 FROM deps AS build
-COPY frontend ./
+COPY --chown=node:node frontend ./
 RUN npm run build
 
 # ============================================================================
