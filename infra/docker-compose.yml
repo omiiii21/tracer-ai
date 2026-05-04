@@ -38,9 +38,13 @@ services:
         condition: service_healthy
     volumes:
       - ../tracer_ai:/app/tracer_ai:ro
-    # WAVE 2 PLACEHOLDER -- Wave 3 plan replaces with `["alembic", "upgrade", "head"]`
-    # plus mounts for ../alembic and ../alembic.ini once those files exist.
-    command: ["sleep", "5"]
+      - ../alembic:/app/alembic:ro
+      - ../alembic.ini:/app/alembic.ini:ro
+      - ../pyproject.toml:/app/pyproject.toml:ro
+      - ../uv.lock:/app/uv.lock:ro
+    # Wave 3: alembic upgrade head -- runs once, exits 0 -- gated by db service_healthy.
+    # api service depends on this with service_completed_successfully (D-2.15).
+    command: ["alembic", "upgrade", "head"]
     restart: "no"
 
   api:
