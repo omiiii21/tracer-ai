@@ -69,10 +69,8 @@ services:
       timeout: 3s
       retries: 3
       start_period: 5s
-    # WAVE 2 PLACEHOLDER -- Wave 4 plan replaces with the real uvicorn invocation
-    # (the Dockerfile dev stage has the canonical CMD; this override prevents the
-    # api container from crash-looping until tracer_ai/api/main.py exists).
-    command: ["sleep", "infinity"]
+    # Wave 4 (this wave): no command override -- Dockerfile.backend dev stage
+    # CMD runs uvicorn on tracer_ai.api.main:app, which now exists.
 
   web:
     build:
