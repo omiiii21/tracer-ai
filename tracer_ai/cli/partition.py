@@ -10,6 +10,4 @@ def create_next_month_partition() -> None:
 
     Phase 2 stub. Phase 7 polish fills body.
     """
-    raise NotImplementedError(
-        "Phase 2 stub. Phase 7 polish fills body per D-2.18."
-    )
+    raise NotImplementedError("Phase 2 stub. Phase 7 polish fills body per D-2.18.")

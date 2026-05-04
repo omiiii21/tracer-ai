@@ -21,6 +21,7 @@ Per docs/api.md D-25 + D-2.21: the model_config below sets the strict-mode
 forbid policy on extras -- unknown env vars are a Tampering bug class and
 must be rejected at validation time, not silently dropped.
 """
+
 from typing import Literal
 
 from pydantic import Field, PostgresDsn, SecretStr

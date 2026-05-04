@@ -9,14 +9,15 @@ because the synchronous engine factory does NOT work with asyncpg DSNs.
 Per RESEARCH.md Topic 2 + D-2.17: include_object hook skips spans_y* partition
 children so Phase 3+ autogenerate does not try to recreate them.
 """
+
 import asyncio
 from logging.config import fileConfig
 from typing import Any
 
-from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
+from alembic import context
 from tracer_ai.config import settings  # D-2.16 -- single source of DSN
 
 config = context.config
@@ -31,13 +32,9 @@ config.set_main_option("sqlalchemy.url", str(settings.database_url))
 target_metadata = None
 
 
-def _include_object(
-    obj: Any, name: str, type_: str, reflected: bool, compare_to: Any
-) -> bool:
+def _include_object(obj: Any, name: str, type_: str, reflected: bool, compare_to: Any) -> bool:
     """Skip spans_y* partition children on autogenerate (RESEARCH.md Topic 2)."""
-    if type_ == "table" and name.startswith("spans_y"):
-        return False
-    return True
+    return not (type_ == "table" and name.startswith("spans_y"))
 
 
 def do_run_migrations(connection: Any) -> None:

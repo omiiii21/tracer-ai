@@ -9,6 +9,7 @@ strict ConfigDict policy that rejects unknown fields at validation time.
 Per T-2-04-07 mitigation: this prevents silent contract drift between
 docs/api.md and the wire format.
 """
+
 import asyncio
 from typing import Literal
 

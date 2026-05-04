@@ -1,0 +1,78 @@
+# tracer-ai pre-commit hooks (D-2.24 + RESEARCH.md Topic 6)
+# All hooks run on every git commit; CI (Phase 7) re-runs the same hooks plus full pytest.
+
+default_language_version:
+  python: python3.12
+
+repos:
+  # ---- Standard hygiene ----
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-merge-conflict
+      - id: check-yaml
+      - id: check-toml
+      - id: check-json
+      - id: check-added-large-files
+        args: [--maxkb=500]
+
+  # ---- Ruff (lint + format) -- D-2.25 ----
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.7.0
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  # ---- mypy --strict -- D-2.26 (local hook so it shares the project venv) ----
+  # Why local instead of pre-commit/mirrors-mypy: the mirrors-mypy isolated env
+  # cannot see fastapi, structlog, sqlalchemy, etc. that tracer_ai imports.
+  # Mirroring the full runtime dep set into additional_dependencies would
+  # double-pin them and silently drift. Running mypy via uv against the project
+  # venv keeps a single source of truth (pyproject.toml).
+
+  # ---- gitleaks (secret scan) -- RESEARCH.md Topic 11 ----
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.0
+    hooks:
+      - id: gitleaks
+
+  # ---- Local hooks (no upstream pre-commit repo) ----
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy --strict tracer_ai/
+        language: system
+        entry: bash -c 'uv run mypy --strict tracer_ai/'
+        files: ^tracer_ai/.*\.py$
+        pass_filenames: false
+
+      - id: tsc-frontend
+        name: tsc --noEmit (frontend)
+        language: system
+        entry: bash -c 'cd frontend && [ -d node_modules ] || npm install --no-audit --no-fund; npx tsc --noEmit -p tsconfig.json'
+        files: ^frontend/.*\.(ts|tsx)$
+        pass_filenames: false
+
+      - id: pytest-testmon
+        name: pytest --testmon (changed-only)
+        language: system
+        entry: bash -c 'uv run pytest --testmon -q --no-header'
+        types: [python]
+        pass_filenames: false
+
+      - id: import-cycle-guard
+        name: tracer_ai/ module DAG enforcement (D-2.27)
+        language: system
+        entry: bash -c 'uv run python infra/scripts/import_cycle_guard.py'
+        files: ^tracer_ai/.*\.py$
+        pass_filenames: false
+
+      - id: anti-pattern-grep
+        name: anti-pattern grep (D-2.36..40)
+        language: system
+        entry: bash -c 'uv run pytest -q tests/test_anti_patterns.py'
+        files: '\.(py|yml|yaml|toml|json|tsx|ts|js|md|sh|sql|Dockerfile|dockerfile)$'
+        pass_filenames: false

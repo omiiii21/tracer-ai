@@ -1,0 +1,23 @@
+# tracer-ai gitleaks config -- secret-scanning (RESEARCH.md Topic 11)
+# .env.example placeholder values are intentional and allowlisted.
+
+[allowlist]
+description = "Allow .env.example placeholders and design-doc example keys"
+paths = [
+    '''\.env\.example$''',
+    '''\.gitleaks\.toml$''',  # this file mentions sk-ant- as a regex
+    '''docs/.+\.md$''',         # design docs may quote example keys
+    '''\.planning/.+''',         # planning artifacts may quote example keys
+]
+
+[[rules]]
+id = "anthropic-api-key"
+description = "Anthropic API key"
+regex = '''sk-ant-[a-zA-Z0-9_-]{20,}'''
+keywords = ["sk-ant-"]
+
+[[rules]]
+id = "voyage-api-key"
+description = "Voyage AI API key (heuristic -- Voyage keys lack a fixed prefix)"
+regex = '''(?i)voyage[_-]?api[_-]?key\s*[:=]\s*["']?[a-zA-Z0-9_-]{20,}'''
+keywords = ["voyage"]

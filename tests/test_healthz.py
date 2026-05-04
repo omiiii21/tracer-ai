@@ -3,6 +3,7 @@
 Uses a stub pool to exercise the route without a real Postgres. End-to-end
 real-pool verification happens in Task 4 (docker compose up + curl).
 """
+
 from typing import Any
 
 import pytest

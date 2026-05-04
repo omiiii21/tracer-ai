@@ -2,6 +2,7 @@
 
 Closes the Wave 0 gap from RESEARCH.md Validation Architecture for INFRA-03.
 """
+
 import importlib
 import sys
 from typing import Any

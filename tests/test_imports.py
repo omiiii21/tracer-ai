@@ -58,7 +58,10 @@ def test_otel_attribute_constants_present() -> None:
 
 
 def test_partition_helper_stub_raises() -> None:
-    """Phase 2 ships partition.create_next_month_partition() as a stub raising NotImplementedError (D-2.18)."""
+    """Phase 2 ships partition.create_next_month_partition() as a stub.
+
+    Per D-2.18, the helper raises NotImplementedError until Phase 5 fills it in.
+    """
     from tracer_ai.cli.partition import create_next_month_partition
 
     with pytest.raises(NotImplementedError):

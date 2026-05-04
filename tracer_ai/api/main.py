@@ -10,6 +10,7 @@ feedback, traces, admin routes.
 Per D-2.37: structured logging only -- bind a logger via the structlog
 factory (see `log = ...` below); ad-hoc stdout writes are forbidden.
 """
+
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
