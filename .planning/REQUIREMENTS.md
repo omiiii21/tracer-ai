@@ -14,7 +14,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **DSGN-03**: Chat request sequence diagram (Mermaid `sequenceDiagram`) showing sync request path + async eval branch
 - [x] **DSGN-04**: Trace schema spec at `/docs/trace-schema.md` — formal table of every span name, attribute, type, OTel-conformance status, example payload
 - [x] **DSGN-05**: DB schema / ERD at `/docs/data-model.md` (Mermaid `erDiagram`) for `traces`, `spans`, `feedback`, `regression_cases`, plus vector store collection schema
-- [ ] **DSGN-06**: API contract at `/docs/api.md` with Pydantic shapes for `POST /chat`, `GET /traces`, `GET /traces/{id}`, `POST /feedback`, ingest + admin endpoints
+- [x] **DSGN-06**: API contract at `/docs/api.md` with Pydantic shapes for `POST /chat`, `GET /traces`, `GET /traces/{id}`, `POST /feedback`, ingest + admin endpoints
 - [ ] **DSGN-07**: UI wireframes at `/docs/wireframes/` for chat, trace list, trace detail, bad-answer queue, admin
 - [x] **DSGN-08**: Module dependency diagram confirming the architecture-research module layout has no circular deps
 - [x] **DSGN-09**: Risk + scope-trim plan documented (which phases get cut first if budget slips >25%)
@@ -176,7 +176,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DSGN-03 | Phase 1 | Pending |
 | DSGN-04 | Phase 1 | Complete (01-04-SUMMARY.md) |
 | DSGN-05 | Phase 1 | Complete (01-05-SUMMARY.md) |
-| DSGN-06 | Phase 1 | Pending |
+| DSGN-06 | Phase 1 | Complete (01-06-SUMMARY.md) |
 | DSGN-07 | Phase 1 | Pending |
 | DSGN-08 | Phase 1 | Complete (01-02-SUMMARY.md) |
 | DSGN-09 | Phase 1 | Complete (01-01-SUMMARY.md) |

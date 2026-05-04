@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-05-PLAN.md (data-model.md — DSGN-05)
-last_updated: "2026-05-04T04:10:46.000Z"
-last_activity: 2026-05-04 -- Plan 01-05 completed (DSGN-05 docs/data-model.md)
+stopped_at: Completed 01-06-PLAN.md (api.md — DSGN-06)
+last_updated: "2026-05-04T04:17:45.000Z"
+last_activity: 2026-05-04 -- Plan 01-06 completed (DSGN-06 docs/api.md)
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 8
-  completed_plans: 5
-  percent: 63
+  completed_plans: 6
+  percent: 75
 ---
 
 # Project State
@@ -26,30 +26,30 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 ## Current Position
 
 Phase: 1 (Research & Design Artifacts) — EXECUTING
-Plan: 6 of 8 (next: 01-06 — likely DSGN-03 sequence diagram or DSGN-06 API contract)
+Plan: 7 of 8 (next: 01-07 — likely DSGN-03 sequence diagram + DSGN-07 wireframes)
 Status: Executing Phase 1
-Last activity: 2026-05-04 -- Plan 01-05 completed (DSGN-05 docs/data-model.md — Mermaid erDiagram + Postgres DDL with spans monthly partitioning + pgvector chunks schema with VECTOR(1024) + HNSW + 3-column embedding metadata)
+Last activity: 2026-05-04 -- Plan 01-06 completed (DSGN-06 docs/api.md — 7 FastAPI endpoints + common ErrorResponse envelope + 20 Pydantic v2 class blocks with model_config = ConfigDict(extra="forbid"); zero v1 class Config: blocks; FBCK-05 diagnosis_tag stub allocated; rating uses Literal[-1, 1] matching DB CHECK)
 
-Progress: [██████░░░░] 63%
+Progress: [███████░░░] 75%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 5
-- Average duration: ~11 min
-- Total execution time: ~0.9 hours
+- Total plans completed: 6
+- Average duration: ~9 min
+- Total execution time: ~0.95 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 1     | 5     | ~54m  | ~11m     |
+| 1     | 6     | ~56m  | ~9m      |
 
 **Recent Trend:**
 
-- Last 5 plans: 01-01 (~30m), 01-02 (~5m), 01-03 (~6m), 01-04 (~12m), 01-05 (~1m)
-- Trend: continuing to accelerate as design-only spec-authoring plans become more mechanical; Plan 01-05 was a single-task DDL-authoring job with the action block providing a near-complete file template — all 14 verify-step grep assertions passed on first pass with no deviations.
+- Last 6 plans: 01-01 (~30m), 01-02 (~5m), 01-03 (~6m), 01-04 (~12m), 01-05 (~1m), 01-06 (~2m)
+- Trend: design-only spec-authoring plans continue to execute fast and clean; Plan 01-06 was a single-task API-contract authoring job with the action block providing a near-complete file template — all 21 verify-step grep assertions passed on first pass with zero deviations. The strict Pydantic v2 idiom rule (Pitfall E) was enforced via verify-step grep counts (≥10 ConfigDict(extra="forbid"); 0 class Config:) and the file landed at 20 occurrences with 0 v1 patterns.
 
 *Updated after each plan completion*
 
@@ -82,6 +82,11 @@ Recent decisions affecting current work:
 - Embedding-metadata triple-column pattern (embedding_model + embedding_model_version + indexed_at) LOCKED for ANY future vector table — applies to chunks now and to any Phase 3+ second corpus (e.g., user-uploaded docs). Startup assertion config.embedding_model == corpus.embedding_model is the silent-garbage-retrieval mitigation (Pitfall #3 / D-49 / ADR 003) and is Phase 3 CORP-04's contract.
 - span_payloads has NO FK to spans (partitioned-parent FK enforcement is expensive in Postgres) — application-layer enforcement in tracer/exporters/postgres.py per DDL inline comment. Composite PK on spans (id, started_at) is a Postgres correctness requirement (partition key must be in PK), not a uniqueness one.
 - DB-layer integrity constraint pattern established: feedback.rating CHECK (rating IN (-1, 1)) catches malformed values at INSERT time even if Pydantic validation in /docs/api.md is bypassed. Both layers must agree on allowed values; drift = bug. regression_cases.source_trace_id FK has NO ON DELETE because regression cases must outlive the source trace they were promoted from (Phase 6 CLI-05 contract).
+- Plan 01-06: docs/api.md authored (473 LOC) — 7 FastAPI endpoints (POST /chat, POST /feedback, GET /traces, GET /traces/{trace_id}, POST /admin/ingest, GET /admin/corpus, PATCH /admin/chunking-config) + common ErrorResponse + ErrorDetail envelope + 20 Pydantic v2 class blocks each with model_config = ConfigDict(extra="forbid"); 0 v1 class Config: blocks. DSGN-06 satisfied (see .planning/phases/01-research-design-artifacts/01-06-SUMMARY.md).
+- Pydantic v2 strict-mode contract LOCKED for Phase 3 tracer_ai/api/schemas.py copy-paste: every API class has ConfigDict(extra="forbid"); no Optional[...] (uses str | None); no pydantic.constr(...) (uses Annotated[str, Field(...)]); no class Config: v1 blocks. Phase 3 RAG-05 + ADMN-01..04 + CHAT-01..05 + EXPL-01..02 copy verbatim — schema drift between /docs/api.md and the runtime is a bug class to be prevented at the source.
+- Cross-layer constraint pattern established: schema-layer Literal[-1, 1] for FeedbackRequest.rating + DB-layer CHECK (rating IN (-1, 1)) for feedback.rating. Both layers MUST agree on allowed values; drift = bug. (Threat T-01-06-04 mitigated at both API and DB.)
+- Future-stub-without-migration pattern established: FeedbackRequest.diagnosis_tag typed as `str | None` (not Literal) because Phase 5 FBCK-05 may add/rename categories during calibration. Allowed values referenced via inline pointer to docs/trace-schema.md feedback.user section (Retrieval/PromptAssembly/LLM/CorpusStale/Other). Three-layer schema reservation (API + DB + trace) lets Phase 5 surface UI without any schema migration.
+- ErrorResponse.request_id correlates to rag.request root span trace_id — operator pivots from API error to trace explorer without re-keying. Bidirectional traceability built into the contract; Phase 4 TRCR-04 ensures the request middleware writes the same UUID to both response envelope and root span.
 
 ### Pending Todos
 
@@ -104,6 +109,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-04T04:10:46.000Z
-Stopped at: Completed 01-05-PLAN.md (DSGN-05 docs/data-model.md — Mermaid erDiagram for 5 trace tables + Postgres DDL with spans monthly partitioning + pgvector chunks schema with VECTOR(1024) + HNSW + 3-column embedding metadata; the DDL IS the contract Phase 2 INFRA-01 Alembic migration consumes)
-Resume file: .planning/phases/01-research-design-artifacts/01-06-PLAN.md
+Last session: 2026-05-04T04:17:45.000Z
+Stopped at: Completed 01-06-PLAN.md (DSGN-06 docs/api.md — 7 FastAPI endpoints + common ErrorResponse envelope + 20 Pydantic v2 class blocks with model_config = ConfigDict(extra="forbid"); zero v1 class Config: blocks; rating uses Literal[-1, 1] matching DB CHECK; diagnosis_tag str|None future-stub for FBCK-05; copy-paste-safe into Phase 3 tracer_ai/api/schemas.py)
+Resume file: .planning/phases/01-research-design-artifacts/01-07-PLAN.md
