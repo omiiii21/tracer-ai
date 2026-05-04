@@ -48,8 +48,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Wave 1** *(complete 2026-05-04)*
 - [x] 02-01-PLAN.md — Repo scaffold + pyproject.toml + tracer_ai package skeleton + .env.example + Wave-0 smoke tests; Voyage pricing prereq (BLOCKING checkpoint, auto-approved per RESEARCH.md Topic 8 + --auto chain)
 
-**Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 02-02-PLAN.md — Compose stack + Dockerfile.backend (multi-stage uv + non-root) + Dockerfile.frontend + db/init.sql with vector extension
+**Wave 2** *(complete 2026-05-04)*
+- [x] 02-02-PLAN.md — Compose stack + Dockerfile.backend (multi-stage uv + non-root USER app uid 1000) + Dockerfile.frontend + db/init.sql with vector extension; live verify: `db` healthy, vector extension installed, tracer role NOSUPERUSER, container `whoami` = `app`
 
 **Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 02-03-PLAN.md — Alembic async env.py + 0001_initial.py (verbatim DDL from data-model.md) + migrate service wired in compose

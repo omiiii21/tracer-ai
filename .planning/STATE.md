@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: "Phase 2 Wave 1 complete (Plan 02-01: repo scaffold + Voyage pricing checkpoint auto-approved + tracer_ai/ package skeleton + Wave-0 smoke tests; 5 commits 76742e6..f2b472c). Ready for Wave 2 (Compose + Dockerfiles)."
-last_updated: "2026-05-04T14:50:00.000Z"
+stopped_at: "Phase 2 Wave 2 complete (Plan 02-02: Compose stack + Dockerfile.backend non-root + Dockerfile.frontend + db/init.sql + frontend/.env.example; 5 commits 4cde924..cba9971). Live Docker verify passed: db healthy, vector extension installed, tracer role NOSUPERUSER, container runs as app uid 1000. Ready for Wave 3 (Alembic + initial migration)."
+last_updated: "2026-05-04T15:30:00.000Z"
 last_activity: 2026-05-04
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 14
-  completed_plans: 9
-  percent: 64
+  completed_plans: 10
+  percent: 71
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 ## Current Position
 
 Phase: 2
-Plan: 1/6 executed (02-01 complete; 02-02..02-06 pending)
-Status: Phase 2 Wave 1 complete (repo scaffold landed; Voyage pricing checkpoint auto-approved); paused before Wave 2 per user "Wave 1 only" checkpoint
+Plan: 2/6 executed (02-01 + 02-02 complete; 02-03..02-06 pending)
+Status: Phase 2 Wave 2 complete (Compose stack live-verified: db healthy + vector extension + tracer role + non-root container); paused before Wave 3 per user wave-by-wave checkpoint
 Last activity: 2026-05-04
 
-Progress: [████░░░░░░░░░░] 21% (1/7 phases + 1/6 plans of phase 2 done)
+Progress: [█████░░░░░░░░░] 25% (1/7 phases + 2/6 plans of phase 2 done)
 
 ## Performance Metrics
 
@@ -45,7 +45,7 @@ Progress: [████░░░░░░░░░░] 21% (1/7 phases + 1/6 pla
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 1 | 8 | - | - |
-| 2 | 6 planned, 1 executed (02-01 ~18 min) | - | - |
+| 2 | 6 planned, 2 executed (02-01 ~18m + 02-02 ~22m) | - | - |
 
 **Recent Trend:**
 
