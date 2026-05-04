@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-02-PLAN.md (architecture + module-deps diagrams)
-last_updated: "2026-05-03T20:52:31.000Z"
-last_activity: 2026-05-03 -- Plan 01-02 completed (DSGN-02 + DSGN-08 diagrams)
+stopped_at: Completed 01-03-PLAN.md (coverage_set.yaml — DSGN-10)
+last_updated: "2026-05-04T02:20:08.000Z"
+last_activity: 2026-05-04 -- Plan 01-03 completed (DSGN-10 coverage_set.yaml)
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 8
-  completed_plans: 2
-  percent: 25
+  completed_plans: 3
+  percent: 38
 ---
 
 # Project State
@@ -26,30 +26,30 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 ## Current Position
 
 Phase: 1 (Research & Design Artifacts) — EXECUTING
-Plan: 3 of 8 (next: 01-03 chat sequence diagram)
+Plan: 4 of 8 (next: 01-04 chat-request sequence diagram, DSGN-03)
 Status: Executing Phase 1
-Last activity: 2026-05-03 -- Plan 01-02 completed (DSGN-02 architecture diagram + DSGN-08 module-deps diagram)
+Last activity: 2026-05-04 -- Plan 01-03 completed (DSGN-10 docs/eval/coverage_set.yaml — 12 hand-curated coverage queries)
 
-Progress: [██░░░░░░░░] 25%
+Progress: [████░░░░░░] 38%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 2
-- Average duration: ~17 min
-- Total execution time: ~0.6 hours
+- Total plans completed: 3
+- Average duration: ~14 min
+- Total execution time: ~0.7 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 1     | 2     | ~35m  | ~17m     |
+| 1     | 3     | ~41m  | ~14m     |
 
 **Recent Trend:**
 
-- Last 5 plans: 01-01 (~30m), 01-02 (~5m)
-- Trend: faster (Plan 01-02 was a 2-task diagram authoring; Plan 01-01 was 11-file ADR authoring)
+- Last 5 plans: 01-01 (~30m), 01-02 (~5m), 01-03 (~6m)
+- Trend: faster (Plan 01-03 was a 1-task verbatim-transcription job; verify-step Python assertions passed first run)
 
 *Updated after each plan completion*
 
@@ -68,6 +68,9 @@ Recent decisions affecting current work:
 - ADR 010 cut order on >25% slip: DEMO-02/03/04 -> DASH-04 -> FBCK-05 UI -> CLI-04 -> EVAL-06 30->15 (reversible; requires PROJECT.md update on invocation)
 - Plan 01-02: docs/architecture.md (Mermaid flowchart TD, three-tier subgraphs + Anthropic + Voyage AI) + docs/module-deps.md (Mermaid flowchart LR, 8 modules, visual acyclicity); DSGN-02 and DSGN-08 satisfied (see .planning/phases/01-research-design-artifacts/01-02-SUMMARY.md)
 - Module dependency layering locked: leaves {config, errors} -> foundation {tracer/, corpus/} -> orchestration {rag/, eval/} -> entry points {api/, cli/}; corpus/ imports config+errors only (NOT rag/) — Phase 2 INFRA-04 will runtime-enforce this
+- Plan 01-03: docs/eval/coverage_set.yaml authored — 12 hand-curated coverage queries (COV-01..COV-12) covering all 12 canonical doc_sections; DSGN-10 satisfied (see .planning/phases/01-research-design-artifacts/01-03-SUMMARY.md)
+- 12-section canonical taxonomy LOCKED for Phase 3 chunker: {auth, models, messages, tools, batches, files, citations, vision, errors-and-rate-limits, prompt-caching, agent-sdk-overview, agent-sdk-tools} — Phase 3 CORP-01/02 chunker MUST use these exact strings (Pitfall F mitigation; contract is /docs/eval/coverage_set.yaml)
+- expected_min_score = 0.6 placeholder uniformly across all 12 coverage queries; calibration deferred to Phase 5 EVAL-06 against ~30 hand-labeled traces
 
 ### Pending Todos
 
@@ -90,6 +93,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-03T20:52:31.000Z
-Stopped at: Completed 01-02-PLAN.md (DSGN-02 architecture diagram + DSGN-08 module-deps diagram)
-Resume file: .planning/phases/01-research-design-artifacts/01-03-PLAN.md
+Last session: 2026-05-04T02:20:08.000Z
+Stopped at: Completed 01-03-PLAN.md (DSGN-10 docs/eval/coverage_set.yaml — 12 hand-curated coverage queries)
+Resume file: .planning/phases/01-research-design-artifacts/01-04-PLAN.md

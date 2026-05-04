@@ -18,7 +18,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **DSGN-07**: UI wireframes at `/docs/wireframes/` for chat, trace list, trace detail, bad-answer queue, admin
 - [x] **DSGN-08**: Module dependency diagram confirming the architecture-research module layout has no circular deps
 - [x] **DSGN-09**: Risk + scope-trim plan documented (which phases get cut first if budget slips >25%)
-- [ ] **DSGN-10**: Proactive coverage regression query set (10+ queries) authored, covering each major Claude API doc section (auth, models, prompts, tools, batches, files, citations, vision)
+- [x] **DSGN-10**: Proactive coverage regression query set (10+ queries) authored, covering each major Claude API doc section (auth, models, prompts, tools, batches, files, citations, vision)
 
 ### Infrastructure (Phase 2)
 
@@ -180,7 +180,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DSGN-07 | Phase 1 | Pending |
 | DSGN-08 | Phase 1 | Complete (01-02-SUMMARY.md) |
 | DSGN-09 | Phase 1 | Complete (01-01-SUMMARY.md) |
-| DSGN-10 | Phase 1 | Pending |
+| DSGN-10 | Phase 1 | Complete (01-03-SUMMARY.md) |
 | INFRA-01 | Phase 2 | Pending |
 | INFRA-02 | Phase 2 | Pending |
 | INFRA-03 | Phase 2 | Pending |
