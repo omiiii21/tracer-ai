@@ -11,11 +11,11 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [x] **DSGN-01**: All `[GSD-OPEN-N]` items from PRD §10 resolved as ADRs in `/docs/decisions/NNN-<slug>.md` (one ADR per item, with context/options/decision/consequences)
 - [x] **DSGN-02**: System architecture diagram (Mermaid `graph` or `flowchart`) at `/docs/architecture.md` showing frontend/backend/data stores/external APIs
-- [ ] **DSGN-03**: Chat request sequence diagram (Mermaid `sequenceDiagram`) showing sync request path + async eval branch
+- [x] **DSGN-03**: Chat request sequence diagram (Mermaid `sequenceDiagram`) showing sync request path + async eval branch
 - [x] **DSGN-04**: Trace schema spec at `/docs/trace-schema.md` — formal table of every span name, attribute, type, OTel-conformance status, example payload
 - [x] **DSGN-05**: DB schema / ERD at `/docs/data-model.md` (Mermaid `erDiagram`) for `traces`, `spans`, `feedback`, `regression_cases`, plus vector store collection schema
 - [x] **DSGN-06**: API contract at `/docs/api.md` with Pydantic shapes for `POST /chat`, `GET /traces`, `GET /traces/{id}`, `POST /feedback`, ingest + admin endpoints
-- [ ] **DSGN-07**: UI wireframes at `/docs/wireframes/` for chat, trace list, trace detail, bad-answer queue, admin
+- [x] **DSGN-07**: UI wireframes at `/docs/wireframes/` for chat, trace list, trace detail, bad-answer queue, admin
 - [x] **DSGN-08**: Module dependency diagram confirming the architecture-research module layout has no circular deps
 - [x] **DSGN-09**: Risk + scope-trim plan documented (which phases get cut first if budget slips >25%)
 - [x] **DSGN-10**: Proactive coverage regression query set (10+ queries) authored, covering each major Claude API doc section (auth, models, prompts, tools, batches, files, citations, vision)
@@ -173,11 +173,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 |-------------|-------|--------|
 | DSGN-01 | Phase 1 | Complete (01-01-SUMMARY.md) |
 | DSGN-02 | Phase 1 | Complete (01-02-SUMMARY.md) |
-| DSGN-03 | Phase 1 | Pending |
+| DSGN-03 | Phase 1 | Complete (01-07-SUMMARY.md) |
 | DSGN-04 | Phase 1 | Complete (01-04-SUMMARY.md) |
 | DSGN-05 | Phase 1 | Complete (01-05-SUMMARY.md) |
 | DSGN-06 | Phase 1 | Complete (01-06-SUMMARY.md) |
-| DSGN-07 | Phase 1 | Pending |
+| DSGN-07 | Phase 1 | Complete (01-07-SUMMARY.md) |
 | DSGN-08 | Phase 1 | Complete (01-02-SUMMARY.md) |
 | DSGN-09 | Phase 1 | Complete (01-01-SUMMARY.md) |
 | DSGN-10 | Phase 1 | Complete (01-03-SUMMARY.md) |

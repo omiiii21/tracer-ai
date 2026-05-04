@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-06-PLAN.md (api.md — DSGN-06)
-last_updated: "2026-05-04T04:17:45.000Z"
-last_activity: 2026-05-04 -- Plan 01-06 completed (DSGN-06 docs/api.md)
+stopped_at: Completed 01-07-PLAN.md (sequence-diagrams + 5 wireframes — DSGN-03 + DSGN-07)
+last_updated: "2026-05-04T04:28:33.000Z"
+last_activity: 2026-05-04 -- Plan 01-07 completed (DSGN-03 docs/sequence-diagrams.md + DSGN-07 5 wireframes + index README)
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 8
-  completed_plans: 6
-  percent: 75
+  completed_plans: 7
+  percent: 87
 ---
 
 # Project State
@@ -26,30 +26,30 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 ## Current Position
 
 Phase: 1 (Research & Design Artifacts) — EXECUTING
-Plan: 7 of 8 (next: 01-07 — likely DSGN-03 sequence diagram + DSGN-07 wireframes)
+Plan: 8 of 8 (next: 01-08 — likely fresh-agent docs check verification gate per D-39)
 Status: Executing Phase 1
-Last activity: 2026-05-04 -- Plan 01-06 completed (DSGN-06 docs/api.md — 7 FastAPI endpoints + common ErrorResponse envelope + 20 Pydantic v2 class blocks with model_config = ConfigDict(extra="forbid"); zero v1 class Config: blocks; FBCK-05 diagnosis_tag stub allocated; rating uses Literal[-1, 1] matching DB CHECK)
+Last activity: 2026-05-04 -- Plan 01-07 completed (DSGN-03 docs/sequence-diagrams.md — 1 Mermaid sequenceDiagram, 8 participants, OTel context-snapshot Note callout encoding Pitfall #1 + alt/else eval-failure suppression encoding Pitfall #3 + dated model snapshots claude-sonnet-4-5-20250929 / claude-haiku-4-5-20251001 encoding Pitfall #4; DSGN-07 docs/wireframes/ — 5 route wireframes (chat, dashboard-list, dashboard-detail, bad-answer-queue, admin) + README index with Mermaid flowchart LR click-through map; every wireframe has the 6 required h2 sections + 4 named states; component inventories cite Tremor v3 + shadcn/ui verbatim; endpoint bindings cite docs/api.md verbatim)
 
-Progress: [███████░░░] 75%
+Progress: [████████░░] 87%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 6
-- Average duration: ~9 min
-- Total execution time: ~0.95 hours
+- Total plans completed: 7
+- Average duration: ~10 min
+- Total execution time: ~1.13 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 1     | 6     | ~56m  | ~9m      |
+| 1     | 7     | ~68m  | ~10m     |
 
 **Recent Trend:**
 
-- Last 6 plans: 01-01 (~30m), 01-02 (~5m), 01-03 (~6m), 01-04 (~12m), 01-05 (~1m), 01-06 (~2m)
-- Trend: design-only spec-authoring plans continue to execute fast and clean; Plan 01-06 was a single-task API-contract authoring job with the action block providing a near-complete file template — all 21 verify-step grep assertions passed on first pass with zero deviations. The strict Pydantic v2 idiom rule (Pitfall E) was enforced via verify-step grep counts (≥10 ConfigDict(extra="forbid"); 0 class Config:) and the file landed at 20 occurrences with 0 v1 patterns.
+- Last 7 plans: 01-01 (~30m), 01-02 (~5m), 01-03 (~6m), 01-04 (~12m), 01-05 (~1m), 01-06 (~2m), 01-07 (~12m)
+- Trend: Plan 01-07 was a two-task plan (sequence-diagram + 5 wireframes + index = 7 files, 611 LOC); both tasks completed first-pass with all verify-step grep assertions green (8 participants, BEFORE root.end() Note callout, alt block, no autonumber, no actor mixing, dated snapshots; per-wireframe 6 required sections + 4 named states + endpoint bindings; README Mermaid flowchart LR + 5 file links). Zero deviations. Three pitfalls (#1 OTel context snapshot, #3 eval-failure suppression, #4 dated model snapshots) encoded into the diagram body as Note callouts so Phase 4 TRCR-04 inherits them as design contracts, not runtime discoveries.
 
 *Updated after each plan completion*
 
@@ -87,6 +87,12 @@ Recent decisions affecting current work:
 - Cross-layer constraint pattern established: schema-layer Literal[-1, 1] for FeedbackRequest.rating + DB-layer CHECK (rating IN (-1, 1)) for feedback.rating. Both layers MUST agree on allowed values; drift = bug. (Threat T-01-06-04 mitigated at both API and DB.)
 - Future-stub-without-migration pattern established: FeedbackRequest.diagnosis_tag typed as `str | None` (not Literal) because Phase 5 FBCK-05 may add/rename categories during calibration. Allowed values referenced via inline pointer to docs/trace-schema.md feedback.user section (Retrieval/PromptAssembly/LLM/CorpusStale/Other). Three-layer schema reservation (API + DB + trace) lets Phase 5 surface UI without any schema migration.
 - ErrorResponse.request_id correlates to rag.request root span trace_id — operator pivots from API error to trace explorer without re-keying. Bidirectional traceability built into the contract; Phase 4 TRCR-04 ensures the request middleware writes the same UUID to both response envelope and root span.
+- Plan 01-07: docs/sequence-diagrams.md (DSGN-03, 90 LOC) + 5 wireframes under docs/wireframes/ + index README (DSGN-07, 521 LOC across 6 files) authored. The sequence-diagram Mermaid block has 8 participants (Browser, FastAPI, Pipeline, Tracer, Anthropic, BackgroundTasks, Judge, Postgres), a Note over callout literally stating "Snapshot otel_context.get_current() BEFORE root.end()" (Pitfall #1 / D-48), an alt/else block for eval-failure suppression (Pitfall #3) with an inner "NEVER re-raise" Note, and dated model snapshots (claude-sonnet-4-5-20250929 / claude-haiku-4-5-20251001) per Pitfall #4 / D-50. (See .planning/phases/01-research-design-artifacts/01-07-SUMMARY.md.)
+- Pitfall #1 mitigation LOCKED as Phase 4 TRCR-04 design contract: the Mermaid Note over callout in docs/sequence-diagrams.md is the canonical statement of "capture OTel context BEFORE root.end()". Phase 4 executor reads the diagram, sees the rule encoded in the diagram body (not just surrounding prose), and inherits the mitigation without runtime discovery. The Design Contracts Encoded section duplicates the rule in prose for redundancy.
+- Wireframe component-inventory contract LOCKED for Phase 3/4/5 frontend tasks (CHAT-*, EXPL-03..04, FBCK-03, DASH-*, ADMN-*): every UI region maps to a specific Tremor v3 (KpiCard, AreaChart) or shadcn/ui (Card, Table, Tabs, Dialog, Badge, Button, Select, Slider, ScrollArea, Tooltip, Toast, Form, Input, Textarea, Alert, FormMessage) symbol name. STACK.md is the source-of-truth name list; wireframes copy verbatim. Mitigates threat T-01-07-03 — drift = wrong import.
+- Wireframe endpoint-binding contract LOCKED: each wireframe cites docs/api.md endpoint paths verbatim (POST /chat, POST /feedback, GET /traces, GET /traces/{trace_id}, GET /traces?feedback=down, GET /traces?min_faithfulness=0.6, GET /admin/corpus, POST /admin/ingest, PATCH /admin/chunking-config). Verify-block grep enforces. Mitigates threat T-01-07-04 — typo propagation from wireframe to frontend implementation.
+- Per-wireframe 6-section + 4-state contract LOCKED: every wireframe has h2 sections in fixed order (Route, Bound API Endpoints, Component Inventory, Layout, States, Interactions); every wireframe documents Loading / Empty / Error / Populated by name (RESEARCH.md component-state coverage rule). dashboard-detail.md additionally documents an "Eval pending" state (rag.eval not yet completed — visual manifestation of the BackgroundTasks dispatch in sequence-diagrams.md).
+- Async-parentage visual-cue pattern established in dashboard-detail.md waterfall: rag.eval row uses dashed parent line (└╌╌) instead of solid (├─) — encodes the cross-task ctx_snapshot relationship documented in sequence-diagrams.md so the operator sees async-parentage at the same time they see the underlying mechanism. Phase 4 EXPL-03..04 frontend implementer copies this convention.
 
 ### Pending Todos
 
@@ -109,6 +115,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-04T04:17:45.000Z
-Stopped at: Completed 01-06-PLAN.md (DSGN-06 docs/api.md — 7 FastAPI endpoints + common ErrorResponse envelope + 20 Pydantic v2 class blocks with model_config = ConfigDict(extra="forbid"); zero v1 class Config: blocks; rating uses Literal[-1, 1] matching DB CHECK; diagnosis_tag str|None future-stub for FBCK-05; copy-paste-safe into Phase 3 tracer_ai/api/schemas.py)
-Resume file: .planning/phases/01-research-design-artifacts/01-07-PLAN.md
+Last session: 2026-05-04T04:28:33.000Z
+Stopped at: Completed 01-07-PLAN.md (DSGN-03 docs/sequence-diagrams.md — 1 Mermaid sequenceDiagram block, 8 participants, OTel context-snapshot Note callout encoding Pitfall #1 BEFORE root.end() rule, alt/else eval-failure suppression encoding Pitfall #3, dated model snapshots claude-sonnet-4-5-20250929 + claude-haiku-4-5-20251001 encoding Pitfall #4 / D-50; DSGN-07 docs/wireframes/ — 5 route wireframes + index README with Mermaid flowchart LR click-through map per D-30; every wireframe contains the 6 required h2 sections + 4 named states; component inventories cite Tremor v3 + shadcn/ui verbatim; endpoint bindings cite docs/api.md verbatim)
+Resume file: .planning/phases/01-research-design-artifacts/01-08-PLAN.md
