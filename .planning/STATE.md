@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-04-PLAN.md (trace-schema.md — DSGN-04)
-last_updated: "2026-05-04T02:37:00.000Z"
-last_activity: 2026-05-04 -- Plan 01-04 completed (DSGN-04 docs/trace-schema.md)
+stopped_at: Completed 01-05-PLAN.md (data-model.md — DSGN-05)
+last_updated: "2026-05-04T04:10:46.000Z"
+last_activity: 2026-05-04 -- Plan 01-05 completed (DSGN-05 docs/data-model.md)
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 8
-  completed_plans: 4
-  percent: 50
+  completed_plans: 5
+  percent: 63
 ---
 
 # Project State
@@ -26,30 +26,30 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 ## Current Position
 
 Phase: 1 (Research & Design Artifacts) — EXECUTING
-Plan: 5 of 8 (next: 01-05 data model / ERD, DSGN-05)
+Plan: 6 of 8 (next: 01-06 — likely DSGN-03 sequence diagram or DSGN-06 API contract)
 Status: Executing Phase 1
-Last activity: 2026-05-04 -- Plan 01-04 completed (DSGN-04 docs/trace-schema.md — 6 spans + Python attribute-constants block + OTel deprecation note + payload-storage convention)
+Last activity: 2026-05-04 -- Plan 01-05 completed (DSGN-05 docs/data-model.md — Mermaid erDiagram + Postgres DDL with spans monthly partitioning + pgvector chunks schema with VECTOR(1024) + HNSW + 3-column embedding metadata)
 
-Progress: [█████░░░░░] 50%
+Progress: [██████░░░░] 63%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 4
-- Average duration: ~13 min
+- Total plans completed: 5
+- Average duration: ~11 min
 - Total execution time: ~0.9 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 1     | 4     | ~53m  | ~13m     |
+| 1     | 5     | ~54m  | ~11m     |
 
 **Recent Trend:**
 
-- Last 5 plans: 01-01 (~30m), 01-02 (~5m), 01-03 (~6m), 01-04 (~12m)
-- Trend: stable; Plan 01-04 was a single-task spec-authoring job with embedded Python contract block; verify-step grep assertions passed after one heading-format correction (backticks removed from H2 headings to satisfy the verify automation literal grep contract).
+- Last 5 plans: 01-01 (~30m), 01-02 (~5m), 01-03 (~6m), 01-04 (~12m), 01-05 (~1m)
+- Trend: continuing to accelerate as design-only spec-authoring plans become more mechanical; Plan 01-05 was a single-task DDL-authoring job with the action block providing a near-complete file template — all 14 verify-step grep assertions passed on first pass with no deviations.
 
 *Updated after each plan completion*
 
@@ -77,6 +77,11 @@ Recent decisions affecting current work:
 - rag.eval contract LOCKED for Phase 5 EVAL-01..06: required attributes are faithfulness, relevance, judge_model (DATED SNAPSHOT — claude-haiku-4-5-20251001 not alias), judge_prompt_version, judge_cost_usd. Calibration in EVAL-06 may iterate judge_prompt_version; attribute names are stable.
 - feedback.user is event-style (not a duration span); feedback.diagnosis_tag attribute reserved in schema for Phase 5 FBCK-05 (allowed values: Retrieval, PromptAssembly, LLM, CorpusStale, Other)
 - Heading-format-vs-verify-grep pattern noted: when a plan's <verify> block greps "^## $name" literally, span-section H2 headings MUST be written WITHOUT inline backticks. Future Phase 1 plans with similar verify contracts should follow this discipline.
+- Plan 01-05: docs/data-model.md authored — Mermaid erDiagram for 5 trace tables (traces, spans, span_payloads, feedback, regression_cases) + Postgres DDL with spans PARTITION BY RANGE (started_at) monthly (D-51) + pgvector chunks schema with VECTOR(1024) + HNSW + embedding_model/_version/indexed_at (D-49) + feedback rating CHECK constraint + ADR cross-refs (002/003/004); DSGN-05 satisfied (see .planning/phases/01-research-design-artifacts/01-05-SUMMARY.md)
+- DDL contract LOCKED for Phase 2 INFRA-01: the Postgres DDL block at docs/data-model.md IS the initial Alembic migration source — 5 trace tables + spans monthly partitioning + chunks (VECTOR + HNSW + embedding metadata triple) + 3 forward-rolling partitions. Naming convention spans_y{YYYY}m{MM} with per-partition indexes {parent}_y{YYYY}m{MM}_{idx} locked for Phase 2 INFRA-02 partition rotation.
+- Embedding-metadata triple-column pattern (embedding_model + embedding_model_version + indexed_at) LOCKED for ANY future vector table — applies to chunks now and to any Phase 3+ second corpus (e.g., user-uploaded docs). Startup assertion config.embedding_model == corpus.embedding_model is the silent-garbage-retrieval mitigation (Pitfall #3 / D-49 / ADR 003) and is Phase 3 CORP-04's contract.
+- span_payloads has NO FK to spans (partitioned-parent FK enforcement is expensive in Postgres) — application-layer enforcement in tracer/exporters/postgres.py per DDL inline comment. Composite PK on spans (id, started_at) is a Postgres correctness requirement (partition key must be in PK), not a uniqueness one.
+- DB-layer integrity constraint pattern established: feedback.rating CHECK (rating IN (-1, 1)) catches malformed values at INSERT time even if Pydantic validation in /docs/api.md is bypassed. Both layers must agree on allowed values; drift = bug. regression_cases.source_trace_id FK has NO ON DELETE because regression cases must outlive the source trace they were promoted from (Phase 6 CLI-05 contract).
 
 ### Pending Todos
 
@@ -99,6 +104,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-04T02:37:00.000Z
-Stopped at: Completed 01-04-PLAN.md (DSGN-04 docs/trace-schema.md — 6 spans + Python attribute-constants block, copy-paste-ready into tracer_ai/tracer/span.py for Phase 4 TRCR-01)
-Resume file: .planning/phases/01-research-design-artifacts/01-05-PLAN.md
+Last session: 2026-05-04T04:10:46.000Z
+Stopped at: Completed 01-05-PLAN.md (DSGN-05 docs/data-model.md — Mermaid erDiagram for 5 trace tables + Postgres DDL with spans monthly partitioning + pgvector chunks schema with VECTOR(1024) + HNSW + 3-column embedding metadata; the DDL IS the contract Phase 2 INFRA-01 Alembic migration consumes)
+Resume file: .planning/phases/01-research-design-artifacts/01-06-PLAN.md
