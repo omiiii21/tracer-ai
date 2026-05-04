@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: "Phase 2 Wave 3 complete (Plan 02-03: tracer_ai/config.py shim FLAT + alembic.ini + async env.py + 0001_initial.py + migrate service wired; 6 commits 440951f..17b6d86). Live verify: migrate exit 0; 9 tables present (traces, spans partitioned + 3 monthly partitions, span_payloads, feedback, regression_cases, chunks); HNSW index active; alembic_version=0001. Ready for Wave 4 (FastAPI + frontend in parallel)."
-last_updated: "2026-05-04T18:35:00.000Z"
+stopped_at: "Phase 2 Wave 4 complete (Plans 02-04 + 02-05 ran sequentially): full Settings expansion (FLAT, fail-fast, extra=forbid) + FastAPI lifespan + asyncpg pool + GET /healthz + Vite + React 18 + Tailwind v3 + shadcn Zinc + Card/Button + / hello route. 10 task commits db45e01..bf1e676. Live verify: 4-service Compose stack boots green; /healthz 200 db=ok; web 200 React root; INFRA-02 closed. Ready for Wave 5 (pre-commit + README + phase-end gate)."
+last_updated: "2026-05-04T20:30:00.000Z"
 last_activity: 2026-05-04
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 14
-  completed_plans: 11
-  percent: 79
+  completed_plans: 13
+  percent: 93
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 ## Current Position
 
 Phase: 2
-Plan: 3/6 executed (02-01 + 02-02 + 02-03 complete; 02-04, 02-05, 02-06 pending)
-Status: Phase 2 Wave 3 complete (alembic migration ran live: 9 tables created including 3 monthly partitions, HNSW index on chunks.embedding, alembic_version=0001); paused before Wave 4 per user wave-by-wave checkpoint
+Plan: 5/6 executed (02-01..02-05 complete; 02-06 pending)
+Status: Phase 2 Wave 4 complete — 4-service Compose stack live-verified (db + migrate + api + web all healthy; /healthz=ok with db=ok; React root rendered at :5173); INFRA-02 closed; paused before Wave 5 per user wave-by-wave checkpoint
 Last activity: 2026-05-04
 
-Progress: [██████░░░░░░░░] 29% (1/7 phases + 3/6 plans of phase 2 done)
+Progress: [████████░░░░░░] 36% (1/7 phases + 5/6 plans of phase 2 done)
 
 ## Performance Metrics
 
@@ -45,7 +45,7 @@ Progress: [██████░░░░░░░░] 29% (1/7 phases + 3/6 pla
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 1 | 8 | - | - |
-| 2 | 6 planned, 3 executed (02-01 ~18m + 02-02 ~22m + 02-03 ~28m) | - | - |
+| 2 | 6 planned, 5 executed (02-01 ~18m + 02-02 ~22m + 02-03 ~28m + 02-04 ~30m + 02-05 ~38m) | - | - |
 
 **Recent Trend:**
 

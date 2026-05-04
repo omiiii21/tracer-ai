@@ -54,9 +54,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Wave 3** *(complete 2026-05-04)*
 - [x] 02-03-PLAN.md — Alembic async env.py + 0001_initial.py (verbatim DDL from data-model.md: 5 trace tables + chunks + 3 monthly partitions for 2026-05/06/07) + migrate service wired; live verify: migrate exit 0, 9 tables present (6 + 3 partitions), pgvector 0.8.2 active, HNSW index on chunks.embedding, feedback CHECK constraint enforced, alembic_version=0001
 
-**Wave 4** *(blocked on Wave 3 completion; 02-04 and 02-05 run in parallel per D-2.42)*
-- [ ] 02-04-PLAN.md — Full Settings (fail-fast) + FastAPI lifespan + asyncpg pool + GET /healthz + config-failfast tests
-- [ ] 02-05-PLAN.md — Vite + React 18 + Tailwind v3 + shadcn (zinc) + Card/Button + / hello route; web service unblocked
+**Wave 4** *(complete 2026-05-04 — ran sequentially; INFRA-02 4-service boot closed)*
+- [x] 02-04-PLAN.md — Full Settings (FLAT, fail-fast at import, extra=forbid) + FastAPI lifespan + asyncpg pool + GET /healthz + config-failfast tests; live verify: `curl http://localhost:8000/healthz` → 200 + `{"status":"ok","db":"ok","version":"0.1.0"}`; 24 tests pass; mypy --strict clean
+- [x] 02-05-PLAN.md — Vite 5 + React 18.3.1 + TypeScript 5.5 + Tailwind v3.4 + shadcn (Zinc) + Card/Button + hello / route; live verify: `curl http://localhost:5173/` → 200 + HTML with React root; pin gates: react@^19=0, tailwindcss@^4=0, react@^18.3.1=1, tailwindcss@^3.4=1
 
 **Wave 5** *(blocked on Wave 4 completion — both plans)*
 - [ ] 02-06-PLAN.md — Pre-commit (ruff + mypy + tsc + pytest-testmon + gitleaks + import-cycle-guard) + README quick-start + phase-end verification gate
