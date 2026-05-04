@@ -51,8 +51,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Wave 2** *(complete 2026-05-04)*
 - [x] 02-02-PLAN.md — Compose stack + Dockerfile.backend (multi-stage uv + non-root USER app uid 1000) + Dockerfile.frontend + db/init.sql with vector extension; live verify: `db` healthy, vector extension installed, tracer role NOSUPERUSER, container `whoami` = `app`
 
-**Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 02-03-PLAN.md — Alembic async env.py + 0001_initial.py (verbatim DDL from data-model.md) + migrate service wired in compose
+**Wave 3** *(complete 2026-05-04)*
+- [x] 02-03-PLAN.md — Alembic async env.py + 0001_initial.py (verbatim DDL from data-model.md: 5 trace tables + chunks + 3 monthly partitions for 2026-05/06/07) + migrate service wired; live verify: migrate exit 0, 9 tables present (6 + 3 partitions), pgvector 0.8.2 active, HNSW index on chunks.embedding, feedback CHECK constraint enforced, alembic_version=0001
 
 **Wave 4** *(blocked on Wave 3 completion; 02-04 and 02-05 run in parallel per D-2.42)*
 - [ ] 02-04-PLAN.md — Full Settings (fail-fast) + FastAPI lifespan + asyncpg pool + GET /healthz + config-failfast tests

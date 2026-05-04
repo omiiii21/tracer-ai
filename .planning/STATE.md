@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: "Phase 2 Wave 2 complete (Plan 02-02: Compose stack + Dockerfile.backend non-root + Dockerfile.frontend + db/init.sql + frontend/.env.example; 5 commits 4cde924..cba9971). Live Docker verify passed: db healthy, vector extension installed, tracer role NOSUPERUSER, container runs as app uid 1000. Ready for Wave 3 (Alembic + initial migration)."
-last_updated: "2026-05-04T15:30:00.000Z"
+stopped_at: "Phase 2 Wave 3 complete (Plan 02-03: tracer_ai/config.py shim FLAT + alembic.ini + async env.py + 0001_initial.py + migrate service wired; 6 commits 440951f..17b6d86). Live verify: migrate exit 0; 9 tables present (traces, spans partitioned + 3 monthly partitions, span_payloads, feedback, regression_cases, chunks); HNSW index active; alembic_version=0001. Ready for Wave 4 (FastAPI + frontend in parallel)."
+last_updated: "2026-05-04T18:35:00.000Z"
 last_activity: 2026-05-04
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 14
-  completed_plans: 10
-  percent: 71
+  completed_plans: 11
+  percent: 79
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 ## Current Position
 
 Phase: 2
-Plan: 2/6 executed (02-01 + 02-02 complete; 02-03..02-06 pending)
-Status: Phase 2 Wave 2 complete (Compose stack live-verified: db healthy + vector extension + tracer role + non-root container); paused before Wave 3 per user wave-by-wave checkpoint
+Plan: 3/6 executed (02-01 + 02-02 + 02-03 complete; 02-04, 02-05, 02-06 pending)
+Status: Phase 2 Wave 3 complete (alembic migration ran live: 9 tables created including 3 monthly partitions, HNSW index on chunks.embedding, alembic_version=0001); paused before Wave 4 per user wave-by-wave checkpoint
 Last activity: 2026-05-04
 
-Progress: [█████░░░░░░░░░] 25% (1/7 phases + 2/6 plans of phase 2 done)
+Progress: [██████░░░░░░░░] 29% (1/7 phases + 3/6 plans of phase 2 done)
 
 ## Performance Metrics
 
@@ -45,7 +45,7 @@ Progress: [█████░░░░░░░░░] 25% (1/7 phases + 2/6 pla
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 1 | 8 | - | - |
-| 2 | 6 planned, 2 executed (02-01 ~18m + 02-02 ~22m) | - | - |
+| 2 | 6 planned, 3 executed (02-01 ~18m + 02-02 ~22m + 02-03 ~28m) | - | - |
 
 **Recent Trend:**
 
