@@ -45,8 +45,8 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. The repo scaffold matches the ARCHITECTURE.md module layout (`tracer_ai/`, `frontend/`, `infra/`) and the `/docs/decisions/` directory exists
 **Plans:** 6 plans
 
-**Wave 1**
-- [ ] 02-01-PLAN.md — Repo scaffold + pyproject.toml + tracer_ai package skeleton + .env.example + Wave-0 smoke tests; Voyage pricing prereq (BLOCKING checkpoint)
+**Wave 1** *(complete 2026-05-04)*
+- [x] 02-01-PLAN.md — Repo scaffold + pyproject.toml + tracer_ai package skeleton + .env.example + Wave-0 smoke tests; Voyage pricing prereq (BLOCKING checkpoint, auto-approved per RESEARCH.md Topic 8 + --auto chain)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 02-02-PLAN.md — Compose stack + Dockerfile.backend (multi-stage uv + non-root) + Dockerfile.frontend + db/init.sql with vector extension
