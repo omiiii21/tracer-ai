@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-01-PLAN.md (ADRs 001-010 + index)
-last_updated: "2026-05-03T20:48:00.000Z"
-last_activity: 2026-05-03 -- Plan 01-01 completed (10 ADRs + README index)
+stopped_at: Completed 01-02-PLAN.md (architecture + module-deps diagrams)
+last_updated: "2026-05-03T20:52:31.000Z"
+last_activity: 2026-05-03 -- Plan 01-02 completed (DSGN-02 + DSGN-08 diagrams)
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 8
-  completed_plans: 1
-  percent: 13
+  completed_plans: 2
+  percent: 25
 ---
 
 # Project State
@@ -26,30 +26,30 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 ## Current Position
 
 Phase: 1 (Research & Design Artifacts) — EXECUTING
-Plan: 2 of 8 (next: 01-02 architecture diagram)
+Plan: 3 of 8 (next: 01-03 chat sequence diagram)
 Status: Executing Phase 1
-Last activity: 2026-05-03 -- Plan 01-01 completed (10 ADRs + README index)
+Last activity: 2026-05-03 -- Plan 01-02 completed (DSGN-02 architecture diagram + DSGN-08 module-deps diagram)
 
-Progress: [█░░░░░░░░░] 13%
+Progress: [██░░░░░░░░] 25%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 1
-- Average duration: ~30 min
-- Total execution time: ~0.5 hours
+- Total plans completed: 2
+- Average duration: ~17 min
+- Total execution time: ~0.6 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 1     | 1     | ~30m  | ~30m     |
+| 1     | 2     | ~35m  | ~17m     |
 
 **Recent Trend:**
 
-- Last 5 plans: 01-01 (~30m)
-- Trend: -
+- Last 5 plans: 01-01 (~30m), 01-02 (~5m)
+- Trend: faster (Plan 01-02 was a 2-task diagram authoring; Plan 01-01 was 11-file ADR authoring)
 
 *Updated after each plan completion*
 
@@ -66,6 +66,8 @@ Recent decisions affecting current work:
 - Plan 01-01: 10 ADRs (001..010) + decisions/README.md index Accepted; DSGN-01 and DSGN-09 satisfied (see .planning/phases/01-research-design-artifacts/01-01-SUMMARY.md)
 - ADR 005 codifies that gen_ai.system is DEPRECATED in the OTel GenAI spec — use gen_ai.provider.name (= "anthropic")
 - ADR 010 cut order on >25% slip: DEMO-02/03/04 -> DASH-04 -> FBCK-05 UI -> CLI-04 -> EVAL-06 30->15 (reversible; requires PROJECT.md update on invocation)
+- Plan 01-02: docs/architecture.md (Mermaid flowchart TD, three-tier subgraphs + Anthropic + Voyage AI) + docs/module-deps.md (Mermaid flowchart LR, 8 modules, visual acyclicity); DSGN-02 and DSGN-08 satisfied (see .planning/phases/01-research-design-artifacts/01-02-SUMMARY.md)
+- Module dependency layering locked: leaves {config, errors} -> foundation {tracer/, corpus/} -> orchestration {rag/, eval/} -> entry points {api/, cli/}; corpus/ imports config+errors only (NOT rag/) — Phase 2 INFRA-04 will runtime-enforce this
 
 ### Pending Todos
 
@@ -88,6 +90,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-03T20:48:00.000Z
-Stopped at: Completed 01-01-PLAN.md (ADRs 001-010 + index)
-Resume file: .planning/phases/01-research-design-artifacts/01-02-PLAN.md
+Last session: 2026-05-03T20:52:31.000Z
+Stopped at: Completed 01-02-PLAN.md (DSGN-02 architecture diagram + DSGN-08 module-deps diagram)
+Resume file: .planning/phases/01-research-design-artifacts/01-03-PLAN.md

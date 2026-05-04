@@ -113,7 +113,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Research & Design Artifacts | 1/8 | In Progress | - |
+| 1. Research & Design Artifacts | 2/8 | In Progress | - |
 | 2. Skeleton & Infrastructure | 0/TBD | Not started | - |
 | 3. RAG Pipeline + Chat UI + Corpus Admin | 0/TBD | Not started | - |
 | 4. Tracer + Trace Explorer | 0/TBD | Not started | - |
