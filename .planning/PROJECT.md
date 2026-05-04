@@ -80,29 +80,31 @@ When a RAG bot misanswers, the operator can open the trace and see exactly *whic
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Build custom observability over wrapping Langfuse/Phoenix | Educational value; explicit instrumentation = portfolio thesis; OTel conventions preserve portability | — Pending |
-| OpenTelemetry GenAI semantic conventions for span attributes | Portability — can swap to any OTel backend without re-instrumenting | — Pending |
-| Self-referential corpus (Claude API docs) | Demoable, clear ground truth, strong narrative ("Anthropic-bot using Anthropic") | — Pending |
-| Direct Anthropic SDK over orchestration frameworks | Frameworks hide the very pipeline stages we want to instrument | — Pending |
-| Anthropic Claude as LLM (Sonnet 4.5 bot, Haiku judge) | User preference; cost-conscious; strong reasoning | — Pending |
-| Phase −1 (research + design artifacts) before any code | All ADRs/diagrams/wireframes locked before Phase 0 — downstream phases are pure execution | — Pending |
-| Single-user local Docker Compose for v1 (no auth, no hosting) | Scope discipline — observability story is the deliverable, not infrastructure | — Pending |
+| Build custom observability over wrapping Langfuse/Phoenix | Educational value; explicit instrumentation = portfolio thesis; OTel conventions preserve portability | Locked in `docs/decisions/005-observability-strategy.md` (Phase 1) |
+| OpenTelemetry GenAI semantic conventions for span attributes | Portability — can swap to any OTel backend without re-instrumenting | Locked in `docs/decisions/005` + `docs/trace-schema.md` (Phase 1) — `gen_ai.provider.name`, NOT deprecated `gen_ai.system` |
+| Self-referential corpus (Claude API docs) | Demoable, clear ground truth, strong narrative ("Anthropic-bot using Anthropic") | Locked — coverage set authored at `docs/eval/coverage_set.yaml` (Phase 1) |
+| Direct Anthropic SDK over orchestration frameworks | Frameworks hide the very pipeline stages we want to instrument | Locked in `docs/decisions/005` + `docs/architecture.md` (Phase 1) |
+| Anthropic Claude as LLM (Sonnet 4.5 bot, Haiku judge) | User preference; cost-conscious; strong reasoning | Locked — Sonnet `claude-sonnet-4-5-20250929`, Haiku `claude-haiku-4-5-20251001` (dated snapshots) — `docs/decisions/008-judge-prompts-thresholds.md` (Phase 1) |
+| Phase 1 (research + design artifacts) before any code | All ADRs/diagrams/wireframes locked before Phase 2 — downstream phases are pure execution | Validated — Phase 1 complete 2026-05-04; fresh-agent docs check PASSED (`docs/_verification.md`); 10/10 must-haves verified |
+| Single-user local Docker Compose for v1 (no auth, no hosting) | Scope discipline — observability story is the deliverable, not infrastructure | Locked in `docs/decisions/009-auth-deployment-direction.md` (Phase 1) |
 
-## Open Questions to Resolve in Phase −1
+## Open Questions Resolved in Phase 1
 
-The following `[GSD-OPEN-N]` items from the foundation PRD must be resolved with ADRs before Phase 0 begins:
+All 9 `[GSD-OPEN-N]` items from the foundation PRD §10 are now codified as ADRs in `/docs/decisions/`. See `docs/decisions/README.md` for the index.
 
-| ID | Question | Recommendation to validate |
-|----|----------|----------------------------|
-| GSD-OPEN-1 | Charting library (Recharts / Tremor / Visx) | Tremor for dashboard-native composition with shadcn/ui |
-| GSD-OPEN-2 | Vector store (Chroma / Qdrant / pgvector / Weaviate) | Qdrant or pgvector — pgvector consolidates with trace store |
-| GSD-OPEN-3 | Embedding provider (Voyage / OpenAI / open-source / Cohere) | Voyage AI for narrative coherence; sentence-transformers fallback |
-| GSD-OPEN-4 | Trace storage backend (Postgres / SQLite / ClickHouse / DuckDB) | Postgres + JSONB; pairs with pgvector if chosen |
-| GSD-OPEN-5 | Observability strategy (custom / custom+OTel / wrap Langfuse / wrap Phoenix) | Currently leaning custom + OTel GenAI conventions; user reviewing |
-| GSD-OPEN-6 | Chunking strategy (fixed / markdown-aware / semantic / late-chunking) | Markdown-header-aware default; admin-tunable |
-| GSD-OPEN-7 | Re-ranking (none / cross-encoder / LLM rerank) | Ship v1 without; add as config flag post-baseline |
-| GSD-OPEN-8 | LLM-as-judge prompts and thresholds | RAGAS-style prompts; calibrate against ~30 hand-labeled traces |
-| GSD-OPEN-9 | Auth + deployment for v1.5 | Capture decision direction in ADR; do not implement in v1 |
+| ID | Question | Resolved In | Decision |
+|----|----------|-------------|----------|
+| GSD-OPEN-1 | Charting library | `docs/decisions/001-charting-library.md` | Tremor v3 (Tailwind v3 pinned) |
+| GSD-OPEN-2 | Vector store | `docs/decisions/002-vector-store.md` | pgvector on the same Postgres 16 as the trace DB |
+| GSD-OPEN-3 | Embedding provider | `docs/decisions/003-embedding-provider.md` | Voyage AI `voyage-code-3` primary; `sentence-transformers nomic-embed-text-v1.5` offline fallback. Pricing verification = Phase 2 INFRA-01 prereq |
+| GSD-OPEN-4 | Trace storage backend | `docs/decisions/004-trace-storage.md` | Postgres 16 + JSONB; `spans` partitioned by `started_at` monthly |
+| GSD-OPEN-5 | Observability strategy | `docs/decisions/005-observability-strategy.md` | Custom tracer using OTel GenAI attribute names as Python constants; **no `opentelemetry-sdk` runtime dep** |
+| GSD-OPEN-6 | Chunking strategy | `docs/decisions/006-chunking-strategy.md` | Markdown-header-aware splitter; default `chunk_size=900`, `overlap=100`; admin-tunable |
+| GSD-OPEN-7 | Re-ranking | `docs/decisions/007-reranking.md` | None in v1; `ENABLE_RERANKER` config flag reserved for v2 |
+| GSD-OPEN-8 | LLM-as-judge prompts and thresholds | `docs/decisions/008-judge-prompts-thresholds.md` | RAGAS-style prompts; XML-delimited untrusted content; threshold calibrated against ~30 hand-labeled traces in Phase 5 EVAL-06 |
+| GSD-OPEN-9 | Auth + deployment for v1.5 | `docs/decisions/009-auth-deployment-direction.md` | ADR-only direction (intent captured); no v1 implementation |
+
+A 10th ADR — `docs/decisions/010-scope-trim.md` — codifies the >25% budget-slip cut order (DSGN-09).
 
 ## Evolution
 
@@ -122,4 +124,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-04 after initialization from tracer-ai-foundation-prd.md*
+*Last updated: 2026-05-04 after Phase 1 (Research & Design Artifacts) completion. All 9 GSD-OPEN-N items resolved as ADRs in `/docs/decisions/`. Phase 2 (Skeleton & Infrastructure) is unblocked.*
