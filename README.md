@@ -4,14 +4,80 @@ A portfolio-grade RAG chatbot built around the thesis that **AI-native observabi
 
 **Core value:** When a RAG bot misanswers, the operator can open the trace and see exactly *which stage failed* — retriever returned wrong chunks, LLM ignored the right chunks, corpus was stale, prompt template degraded.
 
+## Quick Start
+
+Requires Docker Desktop (Compose v2) and `git`.
+
+```bash
+git clone <this-repo> tracer-ai && cd tracer-ai
+cp .env.example .env
+# Edit .env: set ANTHROPIC_API_KEY=sk-ant-... and VOYAGE_API_KEY=...
+docker compose -f infra/docker-compose.yml up --build
+```
+
+When all services report healthy:
+
+| Service | URL | Probe |
+|---------|-----|-------|
+| Backend API | http://localhost:8000/healthz | `curl --silent http://localhost:8000/healthz \| jq` |
+| Frontend SPA | http://localhost:5173 | open in browser — shows "Hello tracer-ai" Card |
+| Postgres | (internal only — see `infra/docker-compose.yml` to opt-in to host port 5432) | `docker compose exec db psql -U tracer -d tracer_ai` |
+
+A successful first boot applies all Alembic migrations, installs the `pgvector` extension, and exposes a working `/healthz` endpoint. Stop the stack with `docker compose down`; pass `-v` to also wipe the Postgres volume.
+
+## Project Structure
+
+```
+tracer-ai/
+├── tracer_ai/              # Python package (backend) — mirrors docs/architecture.md
+│   ├── tracer/             # OTel-aligned span constants, context, store, exporters
+│   ├── rag/                # Retriever / Embedder / LLM Protocols (Phase 3+)
+│   ├── eval/               # LLM-as-judge, feedback, regression (Phase 5+)
+│   ├── corpus/             # Document ingestion + chunking (Phase 3+)
+│   ├── api/                # FastAPI app — main.py, health.py
+│   ├── cli/                # Operator CLI (Phase 6+)
+│   ├── errors.py           # Cross-cutting exception hierarchy
+│   └── config.py           # Pydantic Settings — fail-fast at import (D-2.21)
+├── frontend/               # Vite + React 18 + TS + Tailwind v3 + shadcn/ui
+│   └── src/                # App + components/ui/{card,button} + lib/utils
+├── alembic/                # DB migrations — 0001_initial = full Phase 1 DDL
+├── infra/                  # Docker Compose, Dockerfile.backend, Dockerfile.frontend, db/init.sql
+│   └── scripts/            # import_cycle_guard.py (DAG enforcement)
+├── tests/                  # pytest suite — config fail-fast, /healthz, anti-patterns, smoke imports
+├── docs/                   # Phase 1 design contracts (locked) — see Documentation below
+└── .planning/              # GSD workflow artifacts — phase plans, summaries, state
+```
+
+## Development
+
+After `git clone`, install pre-commit hooks once:
+
+```bash
+uv sync --all-extras            # backend deps (uv 0.5+ recommended)
+uv run pre-commit install        # install hooks at .git/hooks/pre-commit
+cd frontend && npm install      # frontend deps (only needed for local tsc)
+```
+
+The pre-commit chain runs on every commit:
+
+| Hook | What |
+|------|------|
+| `ruff` (lint + format) | Python style |
+| `mypy --strict tracer_ai/` | Static type checking |
+| `tsc --noEmit -p frontend/tsconfig.json` | Frontend type checking |
+| `pytest --testmon` | Changed-only test run |
+| `gitleaks` | Secret scanning (Anthropic + Voyage key patterns) |
+| `import-cycle-guard` | Enforces the locked module DAG (`docs/module-deps.md`) |
+| `anti-pattern-grep` | No `:latest`, no `class Config:` (Pydantic v1), no `print()` in `tracer_ai/`, no `gen_ai.system`, no `opentelemetry-sdk` runtime dep |
+
 ## Status
 
-Phase 1 (Research & Design Artifacts) complete — all design contracts locked under [`docs/`](./docs/). Phases 2–7 are implementation.
+Phase 1 (Research & Design Artifacts) and Phase 2 (Skeleton & Infrastructure) complete. Phases 3–7 are feature implementation.
 
 | Phase | Goal | Status |
 |-------|------|--------|
 | 1 | Research & Design Artifacts | ✓ Complete |
-| 2 | Skeleton & Infrastructure | Not started |
+| 2 | Skeleton & Infrastructure | ✓ Complete |
 | 3 | RAG Pipeline + Chat UI + Corpus Admin | Not started |
 | 4 | Tracer + Trace Explorer | Not started |
 | 5 | Quality Layer + Feedback | Not started |
