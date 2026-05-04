@@ -1,0 +1,91 @@
+# infra/docker-compose.yml
+# tracer-ai Phase 2 dev stack
+# Per D-2.15: separate one-shot `migrate` service; api depends_on it with service_completed_successfully
+# Per D-2.36: NO floating tags; pin every image tag + digest
+# NOTE: omit `version:` field per Compose v2 (RESEARCH.md Topic 4)
+# NOTE: tag is `0.8.2-pg16` (NOT `pg16-v0.8.2`) -- the upstream pgvector/pgvector
+#       repo names tags `<pgvector_version>-pg<postgres_major>`. Plan draft used
+#       the inverted form which does not exist on Docker Hub. Latest stable
+#       pg16 release on Docker Hub is 0.8.2-pg16 (verified 2026-05-04).
+
+services:
+  db:
+    image: pgvector/pgvector:0.8.2-pg16@sha256:7d400e340efb42f4d8c9c12c6427adb253f726881a9985d2a471bf0eed824dff
+    environment:
+      POSTGRES_USER: postgres            # superuser for init.sql
+      POSTGRES_PASSWORD: postgres        # superuser pwd; tracer role is created by init.sql
+      POSTGRES_DB: postgres              # default db; tracer_ai created by init.sql
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro  # D-2.09
+    # ports: ["5432:5432"]  # D-2.10: opt-in only; do not commit uncommented (security note)
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tracer -d tracer_ai"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+
+  migrate:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.backend
+      target: dev
+    env_file: ../.env
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ../tracer_ai:/app/tracer_ai:ro
+    # WAVE 2 PLACEHOLDER -- Wave 3 plan replaces with `["alembic", "upgrade", "head"]`
+    # plus mounts for ../alembic and ../alembic.ini once those files exist.
+    command: ["sleep", "5"]
+    restart: "no"
+
+  api:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.backend
+      target: dev
+    env_file: ../.env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully  # D-2.15
+      db:
+        condition: service_healthy
+    ports: ["8000:8000"]
+    volumes:
+      - ../tracer_ai:/app/tracer_ai
+      - ../pyproject.toml:/app/pyproject.toml:ro
+      - ../uv.lock:/app/uv.lock:ro
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8000/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    # WAVE 2 PLACEHOLDER -- Wave 4 plan replaces with the real uvicorn invocation
+    # (the Dockerfile dev stage has the canonical CMD; this override prevents the
+    # api container from crash-looping until tracer_ai/api/main.py exists).
+    command: ["sleep", "infinity"]
+
+  web:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.frontend
+      target: dev
+    env_file: ../frontend/.env
+    ports: ["5173:5173"]
+    volumes:
+      - ../frontend/src:/app/src
+      - ../frontend/index.html:/app/index.html
+      - /app/node_modules  # anonymous volume (Pitfall 5) -- preserves container's installed deps
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+    # WAVE 2 PLACEHOLDER -- Wave 5 plan ships real Vite scaffold; until then container
+    # comes up but doesn't serve (no /app/src yet). Healthcheck NOT defined per D-2.34.
+    command: ["sleep", "infinity"]
+
+volumes:
+  db_data:
