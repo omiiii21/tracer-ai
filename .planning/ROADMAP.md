@@ -43,7 +43,33 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. All Docker image tags are pinned (no `:latest`); `.env.example` is checked in; startup validates all required env vars with clear error messages on missing values
   3. Pre-commit hooks enforce `ruff`, `mypy --strict`, frontend `tsc`, and the basic test runner on every commit
   4. The repo scaffold matches the ARCHITECTURE.md module layout (`tracer_ai/`, `frontend/`, `infra/`) and the `/docs/decisions/` directory exists
-**Plans**: TBD
+**Plans:** 6 plans
+
+**Wave 1**
+- [ ] 02-01-PLAN.md — Repo scaffold + pyproject.toml + tracer_ai package skeleton + .env.example + Wave-0 smoke tests; Voyage pricing prereq (BLOCKING checkpoint)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 02-02-PLAN.md — Compose stack + Dockerfile.backend (multi-stage uv + non-root) + Dockerfile.frontend + db/init.sql with vector extension
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 02-03-PLAN.md — Alembic async env.py + 0001_initial.py (verbatim DDL from data-model.md) + migrate service wired in compose
+
+**Wave 4** *(blocked on Wave 3 completion; 02-04 and 02-05 run in parallel per D-2.42)*
+- [ ] 02-04-PLAN.md — Full Settings (fail-fast) + FastAPI lifespan + asyncpg pool + GET /healthz + config-failfast tests
+- [ ] 02-05-PLAN.md — Vite + React 18 + Tailwind v3 + shadcn (zinc) + Card/Button + / hello route; web service unblocked
+
+**Wave 5** *(blocked on Wave 4 completion — both plans)*
+- [ ] 02-06-PLAN.md — Pre-commit (ruff + mypy + tsc + pytest-testmon + gitleaks + import-cycle-guard) + README quick-start + phase-end verification gate
+
+**Cross-cutting constraints** *(must_haves shared by ≥2 plans):*
+- No `:latest` Docker tags; every image digest-pinned (enforced by pre-commit grep) — D-2.36 (plans 02-02, 02-06)
+- No `gen_ai.system` (deprecated; use `gen_ai.provider.name`) — D-2.40 (plans 02-01, 02-06)
+- No `class Config:` (Pydantic v1) — `model_config = ConfigDict(...)` only — D-2.39 (plans 02-01, 02-04, 02-06)
+- No `print(...)` in `tracer_ai/` outside `cli/__main__.py`; `structlog.get_logger()` only — D-2.37 (plans 02-01, 02-06)
+- No SDK imports outside their adapter file (`from anthropic` only in `rag/llm.py` + `eval/llm_judge.py`) — D-2.38 (plans 02-01, 02-06)
+- Module-deps DAG enforced at commit time (`config → tracer → rag → eval → api/cli`; `corpus → rag/embedder` only) — D-2.27, D-45 (plans 02-01, 02-06)
+- Pydantic v2 strict-mode (`extra="forbid"`) on all API schemas — D-2.39, D-26 (plans 02-04, 02-06)
+- Tailwind v3 + React 18 pinned (Tailwind v4 + React 19 break Tremor + shadcn) — D-2.30 (plans 02-02, 02-05)
 
 ### Phase 3: RAG Pipeline + Chat UI + Corpus Admin
 **Goal**: A working RAG chatbot answers questions about the Claude API docs with citation-backed answers, and an operator can manage the corpus from a UI
