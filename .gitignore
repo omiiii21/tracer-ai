@@ -1,1 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+env/
+ENV/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.testmondata
+.coverage
+htmlcov/
+
+# Node / frontend
+node_modules/
+dist/
+.vite/
+*.log
+npm-debug.log*
+
+# Env / secrets — NEVER commit real .env (D-2.22)
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Claude Code agent state (preserved from prior .gitignore — never versioned)
 .claude/
+
+# OS
+.DS_Store
+Thumbs.db
