@@ -13,7 +13,7 @@ tracer-ai is built in seven phases that honor a design-first discipline: Phase 1
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Research & Design Artifacts** - Produce all ADRs, diagrams, specs, and wireframes; no code until done
-- [ ] **Phase 2: Skeleton & Infrastructure** - Repo scaffold, Docker Compose boots green, pre-commit hooks, README skeleton
+- [x] **Phase 2: Skeleton & Infrastructure** - Repo scaffold, Docker Compose boots green, pre-commit hooks, README skeleton
 - [ ] **Phase 3: RAG Pipeline + Chat UI + Corpus Admin** - Working RAG chat with citations, corpus ingestion CLI, admin UI
 - [ ] **Phase 4: Tracer + Trace Explorer** - Span emission, async trace write path, trace list/detail dashboard views
 - [ ] **Phase 5: Quality Layer + Feedback** - LLM-as-judge eval, feedback endpoint, bad-answer queue, time-series charts
@@ -58,8 +58,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] 02-04-PLAN.md — Full Settings (FLAT, fail-fast at import, extra=forbid) + FastAPI lifespan + asyncpg pool + GET /healthz + config-failfast tests; live verify: `curl http://localhost:8000/healthz` → 200 + `{"status":"ok","db":"ok","version":"0.1.0"}`; 24 tests pass; mypy --strict clean
 - [x] 02-05-PLAN.md — Vite 5 + React 18.3.1 + TypeScript 5.5 + Tailwind v3.4 + shadcn (Zinc) + Card/Button + hello / route; live verify: `curl http://localhost:5173/` → 200 + HTML with React root; pin gates: react@^19=0, tailwindcss@^4=0, react@^18.3.1=1, tailwindcss@^3.4=1
 
-**Wave 5** *(blocked on Wave 4 completion — both plans)*
-- [ ] 02-06-PLAN.md — Pre-commit (ruff + mypy + tsc + pytest-testmon + gitleaks + import-cycle-guard) + README quick-start + phase-end verification gate
+**Wave 5** *(complete 2026-05-04 — Phase 2 EXIT)*
+- [x] 02-06-PLAN.md — Pre-commit (11 hooks) + gitleaks + custom import_cycle_guard.py (B-2 alias-only emission) + README quick-start + phase-end verification gate (14/14 steps PASSED on destructive fresh-checkout drill); INFRA-04 + INFRA-05 closed
 
 **Cross-cutting constraints** *(must_haves shared by ≥2 plans):*
 - No `:latest` Docker tags; every image digest-pinned (enforced by pre-commit grep) — D-2.36 (plans 02-02, 02-06)
@@ -140,7 +140,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Research & Design Artifacts | 8/8 | Complete    | 2026-05-04 |
-| 2. Skeleton & Infrastructure | 0/TBD | Not started | - |
+| 2. Skeleton & Infrastructure | 6/6 | Complete    | 2026-05-04 |
 | 3. RAG Pipeline + Chat UI + Corpus Admin | 0/TBD | Not started | - |
 | 4. Tracer + Trace Explorer | 0/TBD | Not started | - |
 | 5. Quality Layer + Feedback | 0/TBD | Not started | - |
