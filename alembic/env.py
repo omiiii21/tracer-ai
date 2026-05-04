@@ -4,7 +4,7 @@ Per D-2.16: imports tracer_ai.config.settings as the single source of DSN,
 ensuring no drift between migrations and the api process.
 
 Per RESEARCH.md Topic 2: uses async_engine_from_config() + connection.run_sync()
-because the synchronous engine_from_config() does NOT work with asyncpg DSNs.
+because the synchronous engine factory does NOT work with asyncpg DSNs.
 
 Per RESEARCH.md Topic 2 + D-2.17: include_object hook skips spans_y* partition
 children so Phase 3+ autogenerate does not try to recreate them.
