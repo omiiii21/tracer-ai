@@ -103,3 +103,49 @@ class PipelineResult(BaseModel):
     prompt_template_id: str
     usage: LLMResult
     trace_id: UUID
+
+
+# ---------------------------------------------------------------------------
+# Phase 3 Plan 06 -- chat SSE wire types (CitedChunk + ChatFinalEvent).
+# Appended; existing classes above are preserved verbatim per Plan 06 task 1
+# behavior contract ("preserves Plan 01 classes").
+# ---------------------------------------------------------------------------
+
+
+class CitedChunk(BaseModel):
+    """One cited chunk in a chat ``ChatFinalEvent`` payload.
+
+    Differs from ``RetrievedChunk`` (which carries the internal ``id`` UUID and
+    the raw ``metadata`` dict) by surfacing only the fields the chat client
+    needs to render the citation: 1-based ``idx``, click-through ``doc_url``,
+    human-readable ``section_title``, the chunk ``text``, and the
+    ``score`` (1 - cosine_distance, in [0, 1]).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    idx: int
+    doc_url: str
+    section_title: str
+    text: str
+    score: float
+
+
+class ChatFinalEvent(BaseModel):
+    """Payload of the ``event: final`` SSE frame from POST /chat.
+
+    Differs from ``Final`` (which carries the internal ``LLMResult`` and is
+    consumed by the Pipeline orchestrator) by surfacing the chat-specific
+    fields: trace_id (to link to the trace explorer), cited_chunks (citation
+    list), latency_ms (end-to-end pipeline latency), and the token + cost
+    accounting fields. JSON-serialized as the SSE ``data`` line.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    trace_id: str
+    cited_chunks: list[CitedChunk]
+    latency_ms: int
+    input_tokens: int
+    output_tokens: int
+    estimated_cost_usd: float

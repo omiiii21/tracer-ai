@@ -1,4 +1,4 @@
-"""FastAPI lifespan -- pool open/close + CORP-04 embedding-model identity assertion.
+"""FastAPI lifespan -- pool open/close + CORP-04 + Plan 06 pipeline construction.
 
 Extracted from ``tracer_ai/api/main.py`` per PATTERNS.md s"Backend Subsystem 6"
 (lines 358-373). Adds the CORP-04 startup assertion (Pitfall 7.3 mitigation):
@@ -10,12 +10,21 @@ fresh checkouts must boot so the operator can hit ``/admin`` and click
 re-index. Identity check failures other than mismatch (DB unreachable,
 asyncpg PostgresError) downgrade to a structured warning so a transient DB
 issue at boot doesn't take down the api.
+
+Plan 06 extension: after the asyncpg pool opens AND the CORP-04 assertion
+succeeds, this lifespan constructs and stashes a fully-wired ``Pipeline``
+(VoyageEmbedder + PgvectorRetriever + AnthropicLLM + NoopTraceWriter) on
+``app.state.pipeline``. The pipeline construction is wrapped in try/except so
+test environments without real Voyage / Anthropic keys don't break startup;
+on exception, ``app.state.pipeline = None`` and a structured warning is logged
+(routes that need the pipeline must check for None at request time).
 """
 
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from typing import cast
 
 import asyncpg
 import structlog
@@ -23,6 +32,12 @@ from fastapi import FastAPI
 
 from tracer_ai.config import settings
 from tracer_ai.errors import CorpusEmbeddingMismatchError
+from tracer_ai.rag.embedder import VoyageEmbedder
+from tracer_ai.rag.llm import AnthropicLLM
+from tracer_ai.rag.pipeline import Pipeline
+from tracer_ai.rag.protocols import LLM
+from tracer_ai.rag.retriever import PgvectorRetriever
+from tracer_ai.tracer.writer import NoopTraceWriter, TraceWriter
 
 log = structlog.get_logger()
 
@@ -77,6 +92,35 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         # downgrade to a warning so the api can still serve /healthz. The
         # health endpoint will surface degraded state via its own probe.
         log.warning("corpus.identity_check_failed", error=str(exc))
+
+    # Plan 06: construct the Pipeline + adapters + writer and stash on app.state
+    # for endpoint DI (chat, admin, feedback). Wrapped in try/except so test
+    # environments without real Voyage/Anthropic SDKs available won't fail
+    # startup; on exception, app.state.pipeline = None and routes that need
+    # the pipeline must check for None at request time.
+    try:
+        embedder = VoyageEmbedder()
+        retriever = PgvectorRetriever(pool)
+        # Concrete adapters implement ``stream`` as an async-generator function
+        # (``async def`` + ``yield``) -- the structural shape matches the
+        # ``LLM`` Protocol but mypy reads the Protocol-declared return type as
+        # a coroutine. Cast bridges the gap at the construction boundary
+        # (mirrors the cast pattern in pipeline.py at the call site).
+        llm: LLM = cast(LLM, AnthropicLLM())
+        writer: TraceWriter = NoopTraceWriter()
+        app.state.embedder = embedder
+        app.state.retriever = retriever
+        app.state.llm = llm
+        app.state.trace_writer = writer
+        app.state.pipeline = Pipeline(embedder, retriever, llm, writer, top_k=5)
+        log.info("pipeline_ready", embedder=embedder.name, llm=llm.name)
+    except Exception as exc:
+        log.warning("pipeline_construction_skipped", error=str(exc))
+        app.state.pipeline = None
+        app.state.embedder = None
+        app.state.retriever = None
+        app.state.llm = None
+        app.state.trace_writer = None
 
     try:
         yield
