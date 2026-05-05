@@ -66,7 +66,14 @@ async function stubChat(
   const feedbackCalls: Array<unknown> = [];
   let callIdx = 0;
 
+  // Only stub POST /chat (the SSE API call). Without the method guard, the
+  // glob also intercepts the GET /chat page navigation and serves the SSE
+  // body as HTML — breaking the test before any user interaction.
   await page.route("**/chat", async (route: Route) => {
+    if (route.request().method() !== "POST") {
+      await route.continue();
+      return;
+    }
     const resp = responses[Math.min(callIdx, responses.length - 1)];
     callIdx += 1;
     await route.fulfill({
@@ -82,6 +89,10 @@ async function stubChat(
   });
 
   await page.route("**/feedback", async (route: Route) => {
+    if (route.request().method() !== "POST") {
+      await route.continue();
+      return;
+    }
     const req = route.request();
     let parsed: unknown = null;
     try {

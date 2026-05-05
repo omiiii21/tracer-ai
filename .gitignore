@@ -22,6 +22,11 @@ dist/
 *.log
 npm-debug.log*
 
+# Playwright runtime artifacts
+frontend/test-results/
+frontend/playwright-report/
+frontend/.playwright/
+
 # Env / secrets — NEVER commit real .env (D-2.22)
 .env
 .env.local
