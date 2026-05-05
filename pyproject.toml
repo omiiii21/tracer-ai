@@ -16,8 +16,7 @@ dependencies = [
   "alembic>=1.13,<2.0",
   "uvicorn[standard]>=0.30,<0.40",
   "anthropic>=0.49,<1.0",
-  "voyageai>=0.3,<1.0",
-  "sentence-transformers>=3.0,<4.0",
+  "voyageai>=0.3.0,<0.4.0",
   "structlog>=24.1,<25.0",
   "tiktoken>=0.7,<1.0",
   "httpx>=0.27,<0.30",
@@ -33,6 +32,14 @@ dev = [
   "pytest-testmon>=2.2,<3.0",
   "pre-commit>=3.7,<5.0",
   "types-PyYAML",
+]
+# Optional offline-dev embedder fallback (Phase 3 CORP-05).
+# sentence-transformers is NOT installed by default — its 768-dim output is NOT
+# compatible with the live `chunks VECTOR(1024)` table. The STEmbedder adapter
+# exists behind the Embedder Protocol for unit-testing the Protocol shape only.
+# Install with: pip install -e ".[offline]"
+offline = [
+  "sentence-transformers>=3.0,<4.0",
 ]
 
 [build-system]

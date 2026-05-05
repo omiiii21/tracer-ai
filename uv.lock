@@ -1621,7 +1621,6 @@ dependencies = [
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "python-multipart" },
-    { name = "sentence-transformers" },
     { name = "sqlalchemy", extra = ["asyncio"] },
     { name = "structlog" },
     { name = "tiktoken" },
@@ -1638,6 +1637,9 @@ dev = [
     { name = "pytest-testmon" },
     { name = "ruff" },
     { name = "types-pyyaml" },
+]
+offline = [
+    { name = "sentence-transformers" },
 ]
 
 [package.metadata]
@@ -1657,15 +1659,15 @@ requires-dist = [
     { name = "pytest-testmon", marker = "extra == 'dev'", specifier = ">=2.2,<3.0" },
     { name = "python-multipart", specifier = ">=0.0.9,<1.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.7,<1.0" },
-    { name = "sentence-transformers", specifier = ">=3.0,<4.0" },
+    { name = "sentence-transformers", marker = "extra == 'offline'", specifier = ">=3.0,<4.0" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0,<2.1" },
     { name = "structlog", specifier = ">=24.1,<25.0" },
     { name = "tiktoken", specifier = ">=0.7,<1.0" },
     { name = "types-pyyaml", marker = "extra == 'dev'" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.30,<0.40" },
-    { name = "voyageai", specifier = ">=0.3,<1.0" },
+    { name = "voyageai", specifier = ">=0.3.0,<0.4.0" },
 ]
-provides-extras = ["dev"]
+provides-extras = ["dev", "offline"]
 
 [[package]]
 name = "transformers"
