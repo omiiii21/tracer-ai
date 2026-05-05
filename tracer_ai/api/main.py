@@ -32,7 +32,8 @@ app = FastAPI(
 )
 
 # Routes registered after app creation per the canonical FastAPI pattern.
-from tracer_ai.api import chat, health  # noqa: E402
+from tracer_ai.api import chat, feedback, health  # noqa: E402
 
 app.include_router(health.router)
 app.include_router(chat.router)
+app.include_router(feedback.router)
