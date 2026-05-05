@@ -31,6 +31,12 @@ def clean_env(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
         "EMBEDDING_MODEL",
         "LOG_LEVEL",
         "ENABLE_RERANKER",
+        "PRICING_CLAUDE_SONNET_4_5_INPUT_PER_MTOK",
+        "PRICING_CLAUDE_SONNET_4_5_OUTPUT_PER_MTOK",
+        "PRICING_CLAUDE_HAIKU_INPUT_PER_MTOK",
+        "PRICING_CLAUDE_HAIKU_OUTPUT_PER_MTOK",
+        "CHUNKING_DEFAULT_SIZE",
+        "CHUNKING_DEFAULT_OVERLAP",
     ):
         monkeypatch.delenv(key, raising=False)
     # Evict the cached module so the next import re-runs `settings = Settings()`

@@ -77,6 +77,47 @@ class Settings(BaseSettings):
         description="Reserved per ADR 007 -- v2 reranker flag",
     )
 
+    # === Pricing constants (Phase 3 Plan 05; per RESEARCH.md s3 lines 162-164) ===
+    # Cost is computed in tracer_ai/rag/llm.py from these per-million-token rates;
+    # bumping a model snapshot may require updating the rate. Rates as of phase
+    # execution time (2026-05-05) -- revisit on model rev.
+    pricing_claude_sonnet_4_5_input_per_mtok: float = Field(
+        default=3.00,
+        validation_alias="PRICING_CLAUDE_SONNET_4_5_INPUT_PER_MTOK",
+        description="USD per 1M input tokens for Sonnet 4.5 (bot model)",
+    )
+    pricing_claude_sonnet_4_5_output_per_mtok: float = Field(
+        default=15.00,
+        validation_alias="PRICING_CLAUDE_SONNET_4_5_OUTPUT_PER_MTOK",
+        description="USD per 1M output tokens for Sonnet 4.5 (bot model)",
+    )
+    pricing_claude_haiku_input_per_mtok: float = Field(
+        default=0.80,
+        validation_alias="PRICING_CLAUDE_HAIKU_INPUT_PER_MTOK",
+        description="USD per 1M input tokens for Haiku (judge model)",
+    )
+    pricing_claude_haiku_output_per_mtok: float = Field(
+        default=4.00,
+        validation_alias="PRICING_CLAUDE_HAIKU_OUTPUT_PER_MTOK",
+        description="USD per 1M output tokens for Haiku (judge model)",
+    )
+
+    # === Chunking defaults (ADR 006) ===
+    chunking_default_size: int = Field(
+        default=900,
+        ge=100,
+        le=4000,
+        validation_alias="CHUNKING_DEFAULT_SIZE",
+        description="Default chunk size in tokens; admin-tunable via PATCH /admin/chunking-config",
+    )
+    chunking_default_overlap: int = Field(
+        default=100,
+        ge=0,
+        le=500,
+        validation_alias="CHUNKING_DEFAULT_OVERLAP",
+        description="Default chunk overlap in tokens; admin-tunable via PATCH /admin/chunking-config",  # noqa: E501
+    )
+
 
 # D-2.21 fail-fast: ValidationError raises here if any required var is missing.
 settings = Settings()
