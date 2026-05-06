@@ -34,7 +34,7 @@ export function MetadataStrip({
       <span>${estimated_cost_usd.toFixed(4)}</span>
       <ThumbsFeedback traceId={traceId} />
       <Link
-        to={`/traces/${traceId}`}
+        to={`/dashboard/traces/${traceId}`}
         className="hover:underline ml-auto"
       >
         trace ↗

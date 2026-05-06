@@ -1,8 +1,10 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
+
 import { AppShell } from "@/components/AppShell";
-import { Chat } from "@/pages/Chat";
 import { Admin } from "@/pages/Admin";
-import { TraceStub } from "@/pages/TraceStub";
+import { Chat } from "@/pages/Chat";
+import { Dashboard } from "@/pages/Dashboard";
+import { TraceDetail } from "@/pages/TraceDetail";
 
 export const router = createBrowserRouter([
   { path: "/", element: <Navigate to="/chat" replace /> },
@@ -11,7 +13,8 @@ export const router = createBrowserRouter([
     children: [
       { path: "/chat", element: <Chat /> },
       { path: "/admin", element: <Admin /> },
+      { path: "/dashboard", element: <Dashboard /> },
+      { path: "/dashboard/traces/:trace_id", element: <TraceDetail /> },
     ],
   },
-  { path: "/traces/:trace_id", element: <TraceStub /> },
 ]);

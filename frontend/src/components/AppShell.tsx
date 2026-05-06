@@ -26,6 +26,18 @@ export function AppShell() {
               Chat
             </NavLink>
             <NavLink
+              to="/dashboard"
+              className={({ isActive }) =>
+                cn(
+                  isActive
+                    ? "font-medium text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )
+              }
+            >
+              Dashboard
+            </NavLink>
+            <NavLink
               to="/admin"
               className={({ isActive }) =>
                 cn(
