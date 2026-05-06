@@ -101,7 +101,7 @@ Plans:
 
 **Wave 2** *(in progress; 04-02 complete 2026-05-06)*
 - [x] 04-02-PLAN.md -- BoundedDropOldestQueue (D-4.06) + saturation logging (D-4.08); standalone unit tests for drop-oldest invariant + concurrent producers + rate-limited log — see 04-02-SUMMARY.md
-- [ ] 04-03-PLAN.md -- PostgresTraceWriter + SpanConsumer (50-spans-or-250ms batch flush via executemany); lifespan integration (Noop -> Postgres swap, 5s shutdown drain, drain -> cancel -> close pool ordering)
+- [x] 04-03-PLAN.md -- PostgresTraceWriter + SpanConsumer (50-spans-or-250ms batch flush via executemany); lifespan integration (Noop -> Postgres swap, 5s shutdown drain, drain -> cancel -> close pool ordering)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 04-04-PLAN.md -- TraceStore Protocol + PostgresTraceStore; GET /traces (cursor pagination + 6 filters) + GET /traces/{trace_id} (two-query pattern); feedback.py UPDATE traces SET feedback_rating in same transaction
