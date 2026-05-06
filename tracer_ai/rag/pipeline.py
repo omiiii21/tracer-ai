@@ -261,10 +261,15 @@ class Pipeline:
                         started_at=prompt_started,
                         ended_at=_now(),
                         attrs=prompt_attrs,
-                        # D-4.11/D-4.12: full assembled messages + template id
+                        # D-4.11/D-4.12: full assembled messages + template id.
+                        # Pydantic Message objects must be converted to dicts so the
+                        # PostgresTraceWriter's json.dumps() in _flush can serialize them
+                        # (Pitfall 3 mitigation extension).
                         payload=(
                             {
-                                "messages": messages if messages is not None else [],
+                                "messages": [m.model_dump(mode="json") for m in messages]
+                                if messages is not None
+                                else [],
                                 "prompt_template_id": prompt_attrs.get(RAG_PROMPT_TEMPLATE_ID, ""),
                             }
                             if messages is not None
