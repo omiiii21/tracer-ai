@@ -111,6 +111,7 @@ def _build_pipeline(
     n_chunks: int = 3,
     retriever_raise: Exception | None = None,
     deltas: list[str] | None = None,
+    db_pool: Any = None,
 ) -> tuple[Any, _CapturingWriter]:
     from tracer_ai.rag.pipeline import Pipeline
 
@@ -121,8 +122,41 @@ def _build_pipeline(
         llm=_FakeLLM(deltas=deltas),
         writer=writer,
         top_k=5,
+        db_pool=db_pool,
     )
     return pipeline, writer
+
+
+# --- Phase 4 Plan 1 Task 3: FakePool recorder for db_pool integration -----
+
+
+class _FakeConn:
+    def __init__(self, recorder: list[tuple[str, str, tuple[Any, ...]]]) -> None:
+        self._recorder = recorder
+
+    async def execute(self, query: str, *args: Any) -> None:
+        self._recorder.append(("execute", query, args))
+
+
+class _FakeAcquireCtx:
+    def __init__(self, recorder: list[tuple[str, str, tuple[Any, ...]]]) -> None:
+        self._recorder = recorder
+
+    async def __aenter__(self) -> _FakeConn:
+        return _FakeConn(self._recorder)
+
+    async def __aexit__(self, *exc: Any) -> None:
+        return None
+
+
+class _FakePool:
+    """Mirrors test_feedback_route.py FakePool pattern; records execute() calls."""
+
+    def __init__(self) -> None:
+        self.recorder: list[tuple[str, str, tuple[Any, ...]]] = []
+
+    def acquire(self, timeout: float = 1.0) -> _FakeAcquireCtx:
+        return _FakeAcquireCtx(self.recorder)
 
 
 # --- Test 1: 4 spans emitted ------------------------------------------------
@@ -236,3 +270,93 @@ def test_no_opentelemetry_import_in_pipeline() -> None:
     assert not real_violators, (
         "ADR 005 / D-2.40: pipeline.py must not import opentelemetry; " f"found: {real_violators}"
     )
+
+
+# --- Test 7: Phase 4 D-4.01/D-4.03 — db_pool INSERT + two UPDATEs ----------
+
+
+@pytest.mark.asyncio
+async def test_pipeline_with_db_pool_inserts_traces_row() -> None:
+    """D-4.01/D-4.03 + closure-capture verification.
+
+    Asserts ALL THREE SQL ops fire on a complete cycle (INSERT INTO traces,
+    UPDATE traces SET latency_ms, UPDATE traces SET estimated_cost_usd) AND
+    the trace_id argument is consistent across all three. Failure of any one
+    indicates broken closure capture (e.g., trace_id not in scope inside
+    _llm_text_iter or _emit_root).
+    """
+    pool = _FakePool()
+    pipeline, _writer = _build_pipeline(db_pool=pool)
+    async for _ev in pipeline.run_chat_stream("test"):
+        pass  # drain to completion
+
+    queries = [(kind, q) for kind, q, _args in pool.recorder if kind == "execute"]
+    # The integration must fire ALL THREE — failure of any one indicates a
+    # broken closure capture (e.g., trace_id not in scope inside _llm_text_iter)
+    assert any(
+        "INSERT INTO traces" in q for _kind, q in queries
+    ), f"Missing INSERT INTO traces — _orchestrate up-front INSERT failed: {queries}"
+    assert any(
+        "UPDATE traces SET latency_ms" in q for _kind, q in queries
+    ), f"Missing UPDATE traces SET latency_ms — _emit_root closure broken: {queries}"
+    assert any("UPDATE traces SET estimated_cost_usd" in q for _kind, q in queries), (
+        f"Missing UPDATE traces SET estimated_cost_usd — _llm_text_iter closure "
+        f"broken (trace_id not captured? self._db_pool not captured?): {queries}"
+    )
+
+    # Verify the trace_id argument is consistent across all 3 SQL operations
+    # (same UUID string) — guards against accidental re-uuid4() in different scopes.
+    insert_args = next(
+        args for kind, q, args in pool.recorder if kind == "execute" and "INSERT INTO traces" in q
+    )
+    update_lat_args = next(
+        args
+        for kind, q, args in pool.recorder
+        if kind == "execute" and "UPDATE traces SET latency_ms" in q
+    )
+    update_cost_args = next(
+        args
+        for kind, q, args in pool.recorder
+        if kind == "execute" and "UPDATE traces SET estimated_cost_usd" in q
+    )
+    insert_trace_id = insert_args[0]  # 1st positional arg of INSERT
+    update_lat_trace_id = update_lat_args[2]  # 3rd positional arg of latency UPDATE
+    update_cost_trace_id = update_cost_args[1]  # 2nd positional arg of cost UPDATE
+    assert insert_trace_id == update_lat_trace_id == update_cost_trace_id, (
+        f"trace_id mismatch across SQL ops — closure capture broken: "
+        f"INSERT={insert_trace_id} UPDATE_LAT={update_lat_trace_id} "
+        f"UPDATE_COST={update_cost_trace_id}"
+    )
+
+
+# --- Test 8: Phase 4 D-4.11/D-4.12 — payload contents per child span -------
+
+
+@pytest.mark.asyncio
+async def test_pipeline_emits_payload_on_child_spans() -> None:
+    """D-4.11/D-4.12: each child span carries the documented payload shape.
+
+    Root rag.request span carries payload=None (D-4.11 explicit).
+    """
+    pipeline, writer = _build_pipeline()
+    async for _ev in pipeline.run_chat_stream("how do I authenticate?"):
+        pass
+
+    by_name = {s.name: s for s in writer.spans}
+
+    retrieve = by_name["rag.retrieve"]
+    assert retrieve.payload is not None
+    assert "retrieved_chunks" in retrieve.payload
+    assert isinstance(retrieve.payload["retrieved_chunks"], list)
+
+    prompt = by_name["rag.prompt_assemble"]
+    assert prompt.payload is not None
+    assert "messages" in prompt.payload
+    assert "prompt_template_id" in prompt.payload
+
+    llm = by_name["rag.llm_call"]
+    assert llm.payload is not None
+    assert "response" in llm.payload
+
+    request_root = by_name["rag.request"]
+    assert request_root.payload is None, "D-4.11: root rag.request span must have payload=None"

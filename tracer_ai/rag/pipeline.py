@@ -48,6 +48,7 @@ from statistics import mean
 from typing import Any, cast
 from uuid import UUID, uuid4
 
+import asyncpg
 import structlog
 
 from tracer_ai.config import settings
@@ -114,12 +115,14 @@ class Pipeline:
         writer: TraceWriter,
         *,
         top_k: int = 5,
+        db_pool: asyncpg.Pool | None = None,  # D-4.01 (RESEARCH Pattern 7)
     ) -> None:
         self.embedder = embedder
         self.retriever = retriever
         self.llm = llm
         self.writer = writer
         self.top_k = top_k
+        self._db_pool = db_pool
 
     async def _orchestrate(
         self, query: str
@@ -157,6 +160,23 @@ class Pipeline:
             "estimated_cost_usd": 0.0,
         }
 
+        # D-4.01: up-front INSERT before embed_batch (FK target must exist before
+        # spans flush). T-04-01-01 mitigation: query[:4000] truncation matches
+        # docs/api.md ChatRequest max_length=4000; all SQL parameters bound via
+        # asyncpg $1..$N placeholders (no string concatenation).
+        if self._db_pool is not None:
+            async with self._db_pool.acquire(timeout=2.0) as conn:
+                await conn.execute(
+                    "INSERT INTO traces (id, started_at, query_text, root_span_id, "
+                    "estimated_cost_usd) "
+                    "VALUES ($1, $2, $3, $4, NULL) "
+                    "ON CONFLICT (id) DO NOTHING",
+                    str(trace_id),
+                    root_started,
+                    query[:4000],
+                    str(root_span_id),
+                )
+
         # Stage 1 (embed): rolled into the rag.request root span latency.
         q_embeddings = await self.embedder.embed_batch([query], input_type="query")
         q_emb = q_embeddings[0]
@@ -193,6 +213,23 @@ class Pipeline:
                         started_at=retrieve_started,
                         ended_at=_now(),
                         attrs=retrieve_attrs,
+                        # D-4.11/D-4.12: full retrieved chunks in span_payloads
+                        payload=(
+                            {
+                                "retrieved_chunks": [
+                                    {
+                                        "chunk_id": str(c.id),
+                                        "content": c.content,
+                                        "score": c.score,
+                                        "doc_id": c.doc_id,
+                                        "doc_section": c.doc_section,
+                                    }
+                                    for c in chunks
+                                ]
+                            }
+                            if chunks
+                            else None
+                        ),
                     )
                 )
             finally:
@@ -224,6 +261,15 @@ class Pipeline:
                         started_at=prompt_started,
                         ended_at=_now(),
                         attrs=prompt_attrs,
+                        # D-4.11/D-4.12: full assembled messages + template id
+                        payload=(
+                            {
+                                "messages": messages if messages is not None else [],
+                                "prompt_template_id": prompt_attrs.get(RAG_PROMPT_TEMPLATE_ID, ""),
+                            }
+                            if messages is not None
+                            else None
+                        ),
                     )
                 )
             finally:
@@ -276,8 +322,50 @@ class Pipeline:
                             started_at=llm_started,
                             ended_at=_now(),
                             attrs=llm_attrs,
+                            # D-4.11/D-4.12: full LLM response payload (answer +
+                            # token usage + cost) — captured AFTER the Final event.
+                            payload=(
+                                {
+                                    "response": {
+                                        "answer": (
+                                            final_event.result.answer
+                                            if final_event is not None
+                                            else ""
+                                        ),
+                                        "input_tokens": (
+                                            int(final_event.result.input_tokens)
+                                            if final_event is not None
+                                            else 0
+                                        ),
+                                        "output_tokens": (
+                                            int(final_event.result.output_tokens)
+                                            if final_event is not None
+                                            else 0
+                                        ),
+                                        "estimated_cost_usd": (
+                                            float(final_event.result.estimated_cost_usd)
+                                            if final_event is not None
+                                            else 0.0
+                                        ),
+                                    }
+                                }
+                                if final_event is not None
+                                else None
+                            ),
                         )
                     )
+                    # D-4.03: estimated_cost_usd UPDATE — closure-captured
+                    # `trace_id` and `self._db_pool` from `_orchestrate` scope.
+                    # Lives after the writer.emit so it fires on the same code
+                    # path as the rag.llm_call payload, preserving cancellation
+                    # safety (still inside the outer finally block).
+                    if self._db_pool is not None and final_event is not None:
+                        async with self._db_pool.acquire(timeout=2.0) as conn:
+                            await conn.execute(
+                                "UPDATE traces SET estimated_cost_usd = $1 WHERE id = $2",
+                                float(final_event.result.estimated_cost_usd),
+                                str(trace_id),
+                            )
                 finally:
                     # Always emit the root rag.request span -- even if a stage
                     # raised mid-flight or the consumer cancelled iteration.
@@ -305,8 +393,22 @@ class Pipeline:
                 started_at=root_started,
                 ended_at=_now(),
                 attrs=root_attrs,
+                # D-4.11: root rag.request span carries no heavy payload.
+                payload=None,
             )
         )
+        # D-4.03 (RESEARCH Pattern 8): latency UPDATE happens after the root
+        # span emit so the span row is in-flight via the writer queue while
+        # the denormalized scalar lands on traces immediately. Both INSERT
+        # and the two UPDATEs use acquire(timeout=2.0) per T-04-01-04.
+        if self._db_pool is not None:
+            async with self._db_pool.acquire(timeout=2.0) as conn:
+                await conn.execute(
+                    "UPDATE traces SET latency_ms = $1, ended_at = $2 WHERE id = $3",
+                    latency_ms,
+                    _now(),
+                    str(trace_id),
+                )
         log.info(
             "pipeline_run_complete",
             trace_id=str(trace_id),
