@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 4 Plan 04 complete; Plan 05 next
-last_updated: "2026-05-06T17:01:30.000Z"
-last_activity: 2026-05-06 -- Phase 04 Plan 04 complete (5 atomic commits)
+stopped_at: Phase 4 Plan 05 complete; Plan 06 next (phase verifier)
+last_updated: "2026-05-06T17:18:30.000Z"
+last_activity: 2026-05-06 -- Phase 04 Plan 05 complete (5 atomic commits)
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 29
-  completed_plans: 27
-  percent: 93
+  completed_plans: 28
+  percent: 97
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 ## Current Position
 
 Phase: 04 (tracer-trace-explorer) — EXECUTING
-Plan: 5 of 6 (Plans 01-04 complete; Plan 05 next — Frontend Dashboard + TraceDetail + SpanWaterfall)
+Plan: 6 of 6 (Plans 01-05 complete; Plan 06 next — Phase 4 verifier: synthetic-load p95 + end-to-end fresh-checkout drill)
 Status: Executing Phase 04
-Last activity: 2026-05-06 -- Phase 04 Plan 04 complete (5 atomic commits dd98d47, 019372c, 69f1271, d0a71a5, 89185b7; SUMMARY at .planning/phases/04-tracer-trace-explorer/04-04-SUMMARY.md)
+Last activity: 2026-05-06 -- Phase 04 Plan 05 complete (5 atomic commits 6e61de5, 8d5ba4a, f61f8de, 4097af6, dad14a3; SUMMARY at .planning/phases/04-tracer-trace-explorer/04-05-SUMMARY.md)
 
-Progress: [████████████░░] 87% of milestone; 3/7 phases complete; 4/6 Phase-4 plans complete
+Progress: [█████████████░] 97% of milestone; 3/7 phases complete; 5/6 Phase-4 plans complete
 
 ## Performance Metrics
 
@@ -46,7 +46,7 @@ Progress: [████████████░░] 87% of milestone; 3/7 pha
 |-------|-------|-------|----------|
 | 1 | 8 | - | - |
 | 2 | 6 / 6 (~3h 6m total — 02-01 ~18m + 02-02 ~22m + 02-03 ~28m + 02-04 ~30m + 02-05 ~38m + 02-06 ~50m) | ~3h 6m | ~31m / plan |
-| 4 | 4 / 6 (04-01 ~25m + 04-02 ~10m + 04-03 ~20m + 04-04 ~13m) | ~68m so far | ~17m / plan |
+| 4 | 5 / 6 (04-01 ~25m + 04-02 ~10m + 04-03 ~20m + 04-04 ~13m + 04-05 ~17m) | ~85m so far | ~17m / plan |
 
 **Recent Trend:**
 
@@ -116,6 +116,17 @@ Recent decisions affecting current work:
 - Plan 04-04: tracer_ai/api/feedback.py wraps INSERT feedback + UPDATE traces SET feedback_rating in a single combined async with (pool.acquire(...), conn.transaction()) — atomic per D-4.03 / T-04-04-08. 5 existing Phase 3 feedback tests still pass after _FakeConn extension (added execute() recorder + @asynccontextmanager async def transaction() no-op); 2 happy-path assertions updated from len(executed)==1 to ==2. Orphan feedback (T-03-06-07) still accepted: UPDATE affects 0 rows on forged trace_id.
 - Plan 04-04: 10 integration tests in tests/integration/test_traces_api.py (>= 9 required) cover list happy paths, in-flight SQL filter (T-04-04-09 acceptance), 400/422 validation errors, 404 missing detail, malformed UUID, full-tree round trip with payloads keyed by span_id. _build_app sets BOTH app.state.db_pool AND app.state.trace_writer (NoopTraceWriter) — mirrors the Phase 4 lifespan contract.
 - Plan 04-04: 5 deviations all surface-level (2 ruff style — Annotated[Query(...)] for B008, combined async with for SIM117; 1 contract-change test update — len(executed) == 2 after the new transaction body; 1 mypy --strict type-annotation fix on heterogeneous fixture dicts; 1 disclosure of phase-end live Docker drill deferral to Plan 04-06 per D-4.25). Zero scope creep.
+- Plan 04-05: Frontend trace explorer ships — /dashboard list page (4 Tremor KPI Cards + AreaChart placeholder + 5-dimension filter bar covering all of EXPL-01 — Query Input + Since/Until datetime-local + Feedback Select + Min faithfulness Slider + Max latency Number Input — + paginated shadcn Table) and /dashboard/traces/:trace_id detail page (KPI cards + shadcn Tabs Spans/Payloads/Feedback + hand-rolled SpanWaterfall + JSON viewers). 5 atomic feat commits (6e61de5, 8d5ba4a, f61f8de, 4097af6, dad14a3); ~17min duration; 10 files created + 5 modified + TraceStub deleted. (See 04-05-SUMMARY.md.)
+- Plan 04-05: Hand-rolled SpanWaterfall pattern locked (D-4.15 / D-4.16) — absolute-positioned divs with `style={{ left: pct%, width: max(4px, pct%) }}`; sync glyph `├─`/`└─` vs. async dashed glyph `└╌╌` for `name === "rag.eval"`; click-to-expand attrs via `useState<Set<string>>` + aria-expanded; rag.eval forward-compat (no rendering in Phase 4 because no rag.eval span exists; live in Phase 5 EVAL-04 with zero UI changes). Min-width 4px enforcement uses inline `style` (Tailwind cannot express `max(4px, X%)` in arbitrary class form).
+- Plan 04-05: TanStack Query queryKey pattern locked — ALWAYS spread filter primitives as separate array members (not the whole object), so per-field changes invalidate cache and stable identity preserved when only an unrelated field changes. RESEARCH Pitfall 7 mitigation acceptance: `queryKey: ["traces", filters.query, filters.since, filters.until, filters.feedback, filters.min_faithfulness, filters.max_latency_ms]`. Combined with `staleTime: 0` per D-4.18, dashboard always re-fetches on remount AND on any filter dimension change.
+- Plan 04-05: One-shot setTimeout + queryClient.invalidateQueries inside useEffect is the canonical "refetch once after delay" pattern (T-04-05-04 mitigation — avoids the recurring refetchInterval class of bugs). Phase 4 detection: `evalSpan = spans.find(s => s.name === "rag.eval"); evalPending = Boolean(evalSpan && !evalSpan.ended_at)` — both no-op in Phase 4; Phase 5 EVAL-04 makes them live without UI changes.
+- Plan 04-05: Frontend XSS-safe payload rendering invariant locked — ALL untrusted content (LLM-generated payloads, span attrs JSON) MUST go through `<pre>{JSON.stringify(value, null, 2)}</pre>`. No dangerouslySetInnerHTML in frontend/src/. Verified by `grep -rc dangerouslySetInnerHTML frontend/src/` returning 0 across the entire tree (T-04-05-01 / T-04-05-02 mitigation acceptance).
+- Plan 04-05: Manual shadcn primitive scaffolding pattern established — write the upstream component template directly into `frontend/src/components/ui/<name>.tsx` after `npm install --save @radix-ui/react-<name>`. Avoids the `npx shadcn@latest add` interactive prompt on Windows + the silent dependency-pin churn. Component surfaces are byte-identical (TabsList, TableHeader, SliderPrimitive, TooltipPrimitive, SelectTrigger). Future plans needing form/dropdown-menu/popover follow the same pattern.
+- Plan 04-05: ky@^1.14.3 added (CLAUDE.md preferred fetch wrapper, ~2KB). Phase 3's `frontend/src/lib/api.ts` continues to use raw `fetch` (Phase 3 didn't install ky); Phase 4's `frontend/src/api/traces.ts` is the first ky-using module. CLAUDE.md "What NOT to Use" prefers ky over axios; consolidation is a Phase 7 polish opportunity.
+- Plan 04-05: 5 deviations all environmental (1 blocking — shadcn CLI interactive on Windows replaced by manual template scaffolding; 1 blocking — ky was missing from Phase 3 package.json; 1 disclosure — Docker live drill deferred to Plan 04-06; 1 disclosure — plan-verify-regex bug `! grep -q "/traces/:trace_id"` matches new route as substring; 1 disclosure — frontend test-infra absence so tdd="true" tasks shipped as code-only feat commits per Plan 04-01/03/04 precedent). Zero scope creep.
+- Plan 04-05: Route migration complete (D-4.17) — old /traces/:trace_id stub replaced by /dashboard + /dashboard/traces/:trace_id under AppShell; Dashboard NavLink inserted between Chat and Admin (rendered nav order [Chat | Dashboard | Admin] matches docs/wireframes/README.md); MetadataStrip "View trace" link target rewritten from /traces/${id} to /dashboard/traces/${id} (T-04-05-06 mitigation — Phase 3 chat deeplinks now reach the production explorer instead of the deleted stub); TraceStub.tsx deleted with zero dangling references.
+- Plan 04-05: React 18 + Tailwind 3 pin gates intact post-install — `npm pkg get` confirms `dependencies.react=^18.3.1` + `devDependencies.tailwindcss=^3.4.0`. Phase 2 D-2.30 contract preserved through 4 Radix peer dep additions + ky.
+- Plan 04-05: EXPL-01 (filter dimensions) + EXPL-02 (detail tree) + EXPL-03 (/dashboard list page) + EXPL-04 (/dashboard/traces/:id detail page) all closed pending Plan 04-06 phase-end live boot drill.
 
 ### Pending Todos
 
@@ -138,6 +149,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-06T17:01:30.000Z
-Stopped at: Phase 4 Plan 04 complete; Plan 05 next
-Resume file: .planning/phases/04-tracer-trace-explorer/04-05-PLAN.md
+Last session: 2026-05-06T17:18:30.000Z
+Stopped at: Phase 4 Plan 05 complete; Plan 06 next (phase verifier)
+Resume file: .planning/phases/04-tracer-trace-explorer/04-06-PLAN.md

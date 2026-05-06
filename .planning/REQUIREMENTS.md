@@ -77,8 +77,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [x] **EXPL-01**: `GET /traces` endpoint supports filtering by query text, time range, feedback rating, faithfulness score, latency bucket
 - [x] **EXPL-02**: `GET /traces/{id}` returns full trace tree (root + all spans + payloads)
-- [ ] **EXPL-03**: `/dashboard` trace list view: searchable/filterable table with columns for query, time, latency, cost, faithfulness, feedback
-- [ ] **EXPL-04**: Trace detail view shows span waterfall (timing) and payload inspectors (chunks with scores, full assembled prompt, full LLM response)
+- [x] **EXPL-03**: `/dashboard` trace list view: searchable/filterable table with columns for query, time, latency, cost, faithfulness, feedback
+- [x] **EXPL-04**: Trace detail view shows span waterfall (timing) and payload inspectors (chunks with scores, full assembled prompt, full LLM response)
 
 ### Eval / Quality Layer (Phase 5)
 
@@ -218,8 +218,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TRCR-10 | Phase 4 Plan 01 | Complete |
 | EXPL-01 | Phase 4 Plan 04 | Complete |
 | EXPL-02 | Phase 4 Plan 04 | Complete |
-| EXPL-03 | Phase 4 | Pending |
-| EXPL-04 | Phase 4 | Pending |
+| EXPL-03 | Phase 4 Plan 05 | Complete |
+| EXPL-04 | Phase 4 Plan 05 | Complete |
 | EVAL-01 | Phase 5 | Pending |
 | EVAL-02 | Phase 5 | Pending |
 | EVAL-03 | Phase 5 | Pending |

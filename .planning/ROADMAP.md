@@ -105,7 +105,7 @@ Plans:
 
 **Wave 3** *(in progress; 04-04 complete 2026-05-06)*
 - [x] 04-04-PLAN.md -- TraceStore Protocol + PostgresTraceStore (TRCR-05 three methods, dict[str, Any] returns to preserve module-deps DAG); GET /traces (cursor pagination + 8 filter params) + GET /traces/{trace_id} (two-query pattern); feedback.py wraps INSERT + UPDATE in atomic asyncpg transaction (D-4.03/T-04-04-08) — see 04-04-SUMMARY.md
-- [ ] 04-05-PLAN.md -- Frontend Dashboard.tsx + TraceDetail.tsx + SpanWaterfall.tsx; install missing shadcn primitives (tabs/table/slider/tooltip/select); route migration /traces/:id -> /dashboard + /dashboard/traces/:trace_id
+- [x] 04-05-PLAN.md -- Frontend Dashboard.tsx + TraceDetail.tsx + SpanWaterfall.tsx; install missing shadcn primitives (tabs/table/slider/tooltip/select) + ky; route migration /traces/:id -> /dashboard + /dashboard/traces/:trace_id; MetadataStrip link target updated; TraceStub deleted — see 04-05-SUMMARY.md
 
 **Wave 4** *(blocked on Wave 3 completion)*
 - [ ] 04-06-PLAN.md -- Phase 4 verification gate: TRCR-08 p95 benchmark + end-to-end pipeline-with-PostgresTraceWriter + alembic reversibility + lifespan drain; TRCR-02/03 conformance audit; TRCR-04 explicitly DEFERRED to Phase 5 EVAL-04
@@ -157,7 +157,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 1. Research & Design Artifacts | 8/8 | Complete    | 2026-05-04 |
 | 2. Skeleton & Infrastructure | 6/6 | Complete    | 2026-05-04 |
 | 3. RAG Pipeline + Chat UI + Corpus Admin | 9/9 | Complete (with 1 carried gap) | 2026-05-05 |
-| 4. Tracer + Trace Explorer | 0/TBD | Not started | - |
+| 4. Tracer + Trace Explorer | 5/6 | In progress | - |
 | 5. Quality Layer + Feedback | 0/TBD | Not started | - |
 | 6. Eval CLI + Regression Set | 0/TBD | Not started | - |
 | 7. Polish + Demo Path | 0/TBD | Not started | - |
