@@ -22,6 +22,7 @@ on exception, ``app.state.pipeline = None`` and a structured warning is logged
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import cast
@@ -37,6 +38,8 @@ from tracer_ai.rag.llm import AnthropicLLM
 from tracer_ai.rag.pipeline import Pipeline
 from tracer_ai.rag.protocols import LLM
 from tracer_ai.rag.retriever import PgvectorRetriever
+from tracer_ai.tracer.exporters.postgres import PostgresTraceWriter, SpanConsumer
+from tracer_ai.tracer.exporters.queue import BoundedDropOldestQueue
 from tracer_ai.tracer.writer import NoopTraceWriter, TraceWriter
 
 log = structlog.get_logger()
@@ -94,10 +97,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         log.warning("corpus.identity_check_failed", error=str(exc))
 
     # Plan 06: construct the Pipeline + adapters + writer and stash on app.state
-    # for endpoint DI (chat, admin, feedback). Wrapped in try/except so test
-    # environments without real Voyage/Anthropic SDKs available won't fail
-    # startup; on exception, app.state.pipeline = None and routes that need
-    # the pipeline must check for None at request time.
+    # for endpoint DI (chat, admin, feedback). Phase 4: swap NoopTraceWriter ->
+    # PostgresTraceWriter; start consumer task; register drain in finally.
+    consumer_task: asyncio.Task[None] | None = None
+    consumer: SpanConsumer | None = None
+    queue_obj: BoundedDropOldestQueue | None = None
     try:
         embedder = VoyageEmbedder()
         retriever = PgvectorRetriever(pool)
@@ -107,23 +111,58 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         # a coroutine. Cast bridges the gap at the construction boundary
         # (mirrors the cast pattern in pipeline.py at the call site).
         llm: LLM = cast(LLM, AnthropicLLM())
-        writer: TraceWriter = NoopTraceWriter()
+        # Phase 4 TRCR-06: BoundedDropOldestQueue + PostgresTraceWriter + SpanConsumer
+        queue_obj = BoundedDropOldestQueue(maxsize=1000)
+        writer: TraceWriter = PostgresTraceWriter(queue=queue_obj)
+        consumer = SpanConsumer(queue=queue_obj, pool=pool)
+        consumer_task = asyncio.create_task(consumer.run(), name="tracer-consumer")
         app.state.embedder = embedder
         app.state.retriever = retriever
         app.state.llm = llm
         app.state.trace_writer = writer
-        app.state.pipeline = Pipeline(embedder, retriever, llm, writer, top_k=5)
-        log.info("pipeline_ready", embedder=embedder.name, llm=llm.name)
+        app.state.consumer = consumer
+        app.state.consumer_task = consumer_task
+        app.state.queue = queue_obj
+        # Plan 1 contract: Pipeline now takes db_pool kwarg for up-front INSERT INTO traces.
+        app.state.pipeline = Pipeline(embedder, retriever, llm, writer, top_k=5, db_pool=pool)
+        log.info(
+            "pipeline_ready",
+            embedder=embedder.name,
+            llm=llm.name,
+            writer="PostgresTraceWriter",
+        )
     except Exception as exc:
         log.warning("pipeline_construction_skipped", error=str(exc))
+        # Fallback: NoopTraceWriter; no consumer task started.
         app.state.pipeline = None
         app.state.embedder = None
         app.state.retriever = None
         app.state.llm = None
-        app.state.trace_writer = None
+        app.state.trace_writer = NoopTraceWriter()
+        app.state.consumer = None
+        app.state.consumer_task = None
+        app.state.queue = None
 
     try:
         yield
     finally:
+        # D-4.10: 5s drain -> cancel consumer task -> close pool.
+        if consumer is not None and queue_obj is not None:
+            consumer.stop_accepting = True
+            try:
+                await asyncio.wait_for(consumer.drain(), timeout=5.0)
+            except TimeoutError:
+                log.warning(
+                    "tracer.shutdown_drain_incomplete",
+                    remaining=queue_obj.qsize(),
+                )
+        if consumer_task is not None:
+            consumer_task.cancel()
+            try:
+                await consumer_task
+            except asyncio.CancelledError:
+                pass
+            except Exception as exc:
+                log.warning("tracer.consumer_task_exit_unexpected", error=str(exc))
         await app.state.db_pool.close()
         log.info("db_pool_closed")
