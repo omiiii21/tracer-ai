@@ -211,7 +211,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TRCR-03 | Phase 4 | Pending |
 | TRCR-04 | Phase 4 | Pending |
 | TRCR-05 | Phase 4 | Pending |
-| TRCR-06 | Phase 4 | Pending |
+| TRCR-06 | Phase 4 Plan 02 (queue) + Plan 03 (writer/consumer) | In Progress (BoundedDropOldestQueue complete; PostgresTraceWriter + SpanConsumer pending in 04-03) |
 | TRCR-07 | Phase 4 | Pending |
 | TRCR-08 | Phase 4 | Pending |
 | TRCR-09 | Phase 4 Plan 01 | Complete |

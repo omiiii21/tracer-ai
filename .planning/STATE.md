@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 4 Plan 01 complete; Plan 02 next
-last_updated: "2026-05-06T15:30:00.000Z"
-last_activity: 2026-05-06 -- Phase 04 Plan 01 complete (3 commits)
+stopped_at: Phase 4 Plan 02 complete; Plan 03 next
+last_updated: "2026-05-06T16:00:00.000Z"
+last_activity: 2026-05-06 -- Phase 04 Plan 02 complete (2 commits)
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 29
-  completed_plans: 24
-  percent: 83
+  completed_plans: 25
+  percent: 86
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 ## Current Position
 
 Phase: 04 (tracer-trace-explorer) — EXECUTING
-Plan: 2 of 6 (Plan 01 complete; Plan 02 next — BoundedDropOldestQueue + saturation logging)
+Plan: 3 of 6 (Plans 01-02 complete; Plan 03 next — PostgresTraceWriter + SpanConsumer + lifespan integration)
 Status: Executing Phase 04
-Last activity: 2026-05-06 -- Phase 04 Plan 01 complete (3 atomic commits 289e21d, 9175a20, a3d2c72; SUMMARY at .planning/phases/04-tracer-trace-explorer/04-01-SUMMARY.md)
+Last activity: 2026-05-06 -- Phase 04 Plan 02 complete (2 atomic commits 2258839, 3fd37b6; SUMMARY at .planning/phases/04-tracer-trace-explorer/04-02-SUMMARY.md)
 
-Progress: [███████░░░░░░░] 50% of milestone; 3/7 phases complete; 1/6 Phase-4 plans complete
+Progress: [████████░░░░░░] 50% of milestone; 3/7 phases complete; 2/6 Phase-4 plans complete
 
 ## Performance Metrics
 
@@ -46,7 +46,7 @@ Progress: [███████░░░░░░░] 50% of milestone; 3/7 pha
 |-------|-------|-------|----------|
 | 1 | 8 | - | - |
 | 2 | 6 / 6 (~3h 6m total — 02-01 ~18m + 02-02 ~22m + 02-03 ~28m + 02-04 ~30m + 02-05 ~38m + 02-06 ~50m) | ~3h 6m | ~31m / plan |
-| 4 | 1 / 6 (04-01 ~25m) | ~25m so far | ~25m / plan |
+| 4 | 2 / 6 (04-01 ~25m + 04-02 ~10m) | ~35m so far | ~17.5m / plan |
 
 **Recent Trend:**
 
@@ -103,6 +103,9 @@ Recent decisions affecting current work:
 - Plan 04-01: Pipeline accepts db_pool: asyncpg.Pool | None = None kwarg. When set, every chat request lands a traces row up-front (INSERT INTO traces with query[:4000] truncation matching docs/api.md ChatRequest max_length and ON CONFLICT (id) DO NOTHING idempotent guard) BEFORE embed_batch; finalizes latency_ms + ended_at via UPDATE traces after _emit_root and estimated_cost_usd via UPDATE traces inside _llm_text_iter finally (closure-captures trace_id and self._db_pool from _orchestrate scope, preserves async-cancellation safety per Pitfall 7.8).
 - Plan 04-01: Closure-capture verification pattern established: integration test asserts ALL 3 SQL ops fire (INSERT INTO traces, UPDATE latency_ms, UPDATE estimated_cost_usd) AND that the trace_id argument is consistent across all 3 (proves trace_id is captured from _orchestrate scope, not re-uuid4()'d in different scopes). Failure of any one indicates a broken closure capture.
 - Plan 04-01: 4 child-span payload contracts locked per docs/trace-schema.md — rag.retrieve carries `{"retrieved_chunks": [{chunk_id, content, score, doc_id, doc_section}]}` if chunks else None; rag.prompt_assemble carries `{"messages": [...], "prompt_template_id": "..."}` if messages else None; rag.llm_call carries `{"response": {"answer", "input_tokens", "output_tokens", "estimated_cost_usd"}}` if final_event else None; rag.request (root) carries payload=None explicitly (D-4.11). Phase 4 Plan 03 PostgresTraceWriter.flush() will INSERT INTO span_payloads from these dicts.
+- Plan 04-02: tracer_ai/tracer/exporters/queue.py BoundedDropOldestQueue exports the locked D-4.06 API verbatim (__init__(maxsize) / async put(item)->bool / async get()->Any / qsize()->int). collections.deque + asyncio.Lock + asyncio.Event composite pattern — eliminates the put_nowait+except+get_nowait race window of asyncio.Queue under concurrent producers. _not_empty.clear() under lock AFTER confirming deque is empty is a load-bearing correctness invariant. (See 04-02-SUMMARY.md.)
+- Plan 04-02: rate-limited tracer.queue_saturated structured log via structlog (D-4.08) — at most once per 1s window; counter resets per period; log payload contains only dropped/window/queue_depth (T-04-02-04 — does NOT include item content). First drop on cold queue (last_log_at=0.0) ALWAYS fires immediately because now - 0.0 >= 1.0; subsequent drops within 1s accumulate into _dropped_count silently.
+- Plan 04-02: 9 unit tests verify the contract (>= 8 required by plan). Concurrent-producer determinism test (T-04-02-03 mitigation acceptance) confirms 5 concurrent put() calls at capacity all return False AND the surviving items are all from the new_* set (no race-window drift). Plan 04-03 PostgresTraceWriter unblocked: PostgresTraceWriter(queue=BoundedDropOldestQueue(maxsize=1000)) is the wiring contract.
 
 ### Pending Todos
 
@@ -125,6 +128,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-06T15:30:00.000Z
-Stopped at: Phase 4 Plan 01 complete; Plan 02 next
-Resume file: .planning/phases/04-tracer-trace-explorer/04-02-PLAN.md
+Last session: 2026-05-06T16:00:00.000Z
+Stopped at: Phase 4 Plan 02 complete; Plan 03 next
+Resume file: .planning/phases/04-tracer-trace-explorer/04-03-PLAN.md
