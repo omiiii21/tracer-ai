@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Research & Design Artifacts** - Produce all ADRs, diagrams, specs, and wireframes; no code until done
 - [x] **Phase 2: Skeleton & Infrastructure** - Repo scaffold, Docker Compose boots green, pre-commit hooks, README skeleton
-- [ ] **Phase 3: RAG Pipeline + Chat UI + Corpus Admin** - Working RAG chat with citations, corpus ingestion CLI, admin UI
+- [x] **Phase 3: RAG Pipeline + Chat UI + Corpus Admin** - Working RAG chat with citations, corpus ingestion CLI, admin UI
 - [ ] **Phase 4: Tracer + Trace Explorer** - Span emission, async trace write path, trace list/detail dashboard views
 - [ ] **Phase 5: Quality Layer + Feedback** - LLM-as-judge eval, feedback endpoint, bad-answer queue, time-series charts
 - [ ] **Phase 6: Eval CLI + Regression Set** - Regression CLI running both proactive and reactive query sets
@@ -141,7 +141,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 |-------|----------------|--------|-----------|
 | 1. Research & Design Artifacts | 8/8 | Complete    | 2026-05-04 |
 | 2. Skeleton & Infrastructure | 6/6 | Complete    | 2026-05-04 |
-| 3. RAG Pipeline + Chat UI + Corpus Admin | 0/TBD | Not started | - |
+| 3. RAG Pipeline + Chat UI + Corpus Admin | 9/9 | Complete (with 1 carried gap) | 2026-05-05 |
 | 4. Tracer + Trace Explorer | 0/TBD | Not started | - |
 | 5. Quality Layer + Feedback | 0/TBD | Not started | - |
 | 6. Eval CLI + Regression Set | 0/TBD | Not started | - |
