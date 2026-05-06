@@ -93,7 +93,22 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. Drilling into a trace detail view shows a span waterfall with all four spans (`rag.request`, `rag.retrieve`, `rag.prompt_assemble`, `rag.llm_call`), each retrieved chunk with its similarity score, the full assembled prompt, and the full LLM response
   3. The trace list supports filtering by query text, time range, feedback rating, faithfulness score, and latency bucket
   4. Trace writes add no more than 100ms p95 to the request path (async-queue pattern; measured)
-**Plans**: TBD
+**Plans:** 6 plans
+
+Plans:
+**Wave 1**
+- [ ] 04-01-PLAN.md -- Schema migration (alembic 0002 adds latency_ms / faithfulness / feedback_rating / estimated_cost_usd + 2026-08 spans partition); Span model field swap (payload_id -> payload); pipeline.py up-front INSERT INTO traces + payload= per child span + UPDATE traces after _emit_root
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 04-02-PLAN.md -- BoundedDropOldestQueue (D-4.06) + saturation logging (D-4.08); standalone unit tests for drop-oldest invariant + concurrent producers + rate-limited log
+- [ ] 04-03-PLAN.md -- PostgresTraceWriter + SpanConsumer (50-spans-or-250ms batch flush via executemany); lifespan integration (Noop -> Postgres swap, 5s shutdown drain, drain -> cancel -> close pool ordering)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 04-04-PLAN.md -- TraceStore Protocol + PostgresTraceStore; GET /traces (cursor pagination + 6 filters) + GET /traces/{trace_id} (two-query pattern); feedback.py UPDATE traces SET feedback_rating in same transaction
+- [ ] 04-05-PLAN.md -- Frontend Dashboard.tsx + TraceDetail.tsx + SpanWaterfall.tsx; install missing shadcn primitives (tabs/table/slider/tooltip/select); route migration /traces/:id -> /dashboard + /dashboard/traces/:trace_id
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 04-06-PLAN.md -- Phase 4 verification gate: TRCR-08 p95 benchmark + end-to-end pipeline-with-PostgresTraceWriter + alembic reversibility + lifespan drain; TRCR-02/03 conformance audit; TRCR-04 explicitly DEFERRED to Phase 5 EVAL-04
 **UI hint**: yes
 
 ### Phase 5: Quality Layer + Feedback

@@ -1120,27 +1120,31 @@ WHERE (started_at, id) < ($1::timestamptz, $2::uuid)
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **`estimated_cost_usd` column on `traces` table**
    - What we know: `TraceListItem` in `docs/api.md` exposes `estimated_cost_usd: float`. The current `traces` DDL (from `0001_initial.py`) does NOT have an `estimated_cost_usd` column.
    - What's unclear: Does D-4.02 add only the three documented columns, or should `estimated_cost_usd` also be added? The `TraceListItem` Pydantic schema requires it, but the column may not exist.
    - Recommendation: Add `estimated_cost_usd REAL NULL` to the 0002 migration. The value is computed in pipeline.py and should be written in the same up-front INSERT or the post-`_emit_root` UPDATE. This is a gap between the locked DDL baseline and the API schema — requires explicit resolution in Plan 1.
+   - **RESOLVED:** Plan 04-01 Task 1 (0002 migration) adds `estimated_cost_usd REAL NULL`; Plan 04-01 Task 3 wires the `UPDATE traces SET estimated_cost_usd = $1 WHERE id = $2` in `_llm_text_iter`'s finally block, captured via closure on `trace_id` and verified by integration test asserting all three SQL ops fire.
 
 2. **`feedback_rating` on `TraceListItem` vs. direct join**
    - What we know: `traces.feedback_rating` (D-4.02) is the denormalized copy of the most recent feedback. `GET /traces` reads it from `traces` directly. `POST /feedback` UPDATEs it.
    - What's unclear: If a trace receives multiple feedback events (e.g., user changes vote), the UPDATE overwrites the previous value. Is this the intended behavior?
    - Recommendation: Yes — the UPDATE overwrites. Single-user portfolio scope means this is a non-issue. Phase 5 can add history if needed. Document in feedback.py.
+   - **RESOLVED:** Plan 04-04 Task 4 wires the UPDATE inside `async with conn.transaction()` for INSERT+UPDATE atomicity; behavior documented as overwrite-by-design in feedback.py module docstring.
 
 3. **QueryClientProvider already wired in main.tsx?**
    - What we know: Phase 3 PATTERNS.md §"Frontend" lists `frontend/src/lib/queryClient.ts` as a Phase 3 deliverable.
    - What's unclear: The current `frontend/src/main.tsx` file was not read — needs verification.
    - Recommendation: Plan 5 Wave 0 should grep for `QueryClientProvider` in `main.tsx` and add it if missing.
+   - **RESOLVED:** Plan 04-05 Task 1 includes a `grep -q "QueryClientProvider" frontend/src/main.tsx` check; if absent, Wave 0 wires it (with `<QueryClientProvider client={queryClient}>` from `frontend/src/lib/queryClient.ts`).
 
 4. **`Select` shadcn component already installed?**
    - What we know: Not confirmed in `frontend/src/components/ui/` glob results.
    - What's unclear: Phase 3 may have installed it for admin form selects.
    - Recommendation: Plan 5 Wave 0 should check and run `npx shadcn@latest add select` if absent.
+   - **RESOLVED:** Plan 04-05 Task 1 runs `npx shadcn@latest add tabs table slider tooltip select` (idempotent — shadcn CLI no-ops if a component is already installed); component file presence verified by acceptance criterion `test -f frontend/src/components/ui/select.tsx`.
 
 ---
 
