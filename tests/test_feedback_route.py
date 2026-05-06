@@ -12,6 +12,8 @@ CI-enforced witnesses:
 from __future__ import annotations
 
 import sys
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
@@ -43,6 +45,22 @@ class _FakeConn:
     async def fetchrow(self, query: str, *args: Any) -> _FakeRow:
         self._recorder.append((query, args))
         return _FakeRow(id=uuid4(), created_at=datetime.now(UTC))
+
+    async def execute(self, query: str, *args: Any) -> None:
+        """Record execute calls so the Phase 4 UPDATE traces SET feedback_rating
+        is verifiable from the FakePool recorder.
+        """
+        self._recorder.append((query, args))
+
+    @asynccontextmanager
+    async def transaction(self) -> AsyncIterator[None]:
+        """No-op async transaction context manager mirroring asyncpg.Connection.transaction()
+        well enough for tests that don't need real rollback semantics. Phase 4 D-4.03
+        wraps the feedback INSERT + UPDATE traces in a single transaction; without this
+        method the existing Phase 3 tests would AttributeError once feedback.py
+        adopts ``async with conn.transaction()``.
+        """
+        yield
 
 
 class _FakeAcquireCtx:
@@ -98,10 +116,13 @@ def test_post_feedback_writes_row_and_returns_201() -> None:
     assert "id" in body
     UUID(body["id"])  # parses cleanly
     assert "created_at" in body
-    # FakePool recorded a single fetchrow with the INSERT.
-    assert len(pool.executed) == 1
-    sql, args = pool.executed[0]
+    # FakePool recorded the INSERT + the Phase 4 D-4.03 denorm UPDATE traces
+    # (atomic in one transaction).
+    assert len(pool.executed) == 2
+    sql, _args = pool.executed[0]
     assert "INSERT INTO feedback" in sql
+    update_sql, _update_args = pool.executed[1]
+    assert "UPDATE traces SET feedback_rating" in update_sql
 
 
 def test_post_feedback_rejects_rating_zero() -> None:
@@ -136,7 +157,8 @@ def test_post_feedback_records_comment() -> None:
         },
     )
     assert resp.status_code == 201
-    assert len(pool.executed) == 1
+    # INSERT feedback + UPDATE traces (Phase 4 D-4.03) -> 2 ops.
+    assert len(pool.executed) == 2
     _sql, args = pool.executed[0]
     # args = (trace_id, rating, comment, diagnosis_tag); match the comment.
     assert "bad answer" in args
