@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import re
 from datetime import datetime
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -216,3 +216,100 @@ class IngestStatus(BaseModel):
     chunks_written: Annotated[int, Field(ge=0)]
     progress: Annotated[float, Field(ge=0.0, le=1.0)]
     error: str | None = None
+
+
+# ---------------------------------------------------------------------------
+# /traces  (GET — list + detail)  Phase 4 Plan 04 — EXPL-01 / EXPL-02
+# ---------------------------------------------------------------------------
+
+
+class TraceListItem(BaseModel):
+    """One row in GET /traces response (docs/api.md §4).
+
+    ``latency_ms`` and ``estimated_cost_usd`` are REQUIRED per docs/api.md §4
+    even though the underlying DB columns are NULLable (in-flight traces may
+    have NULL latency_ms before _emit_root finishes). The store layer filters
+    in-flight traces out of list_traces (``WHERE latency_ms IS NOT NULL``);
+    for get_trace the store coalesces NULLs to 0 / 0.0 for the detail view.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    trace_id: UUID
+    started_at: datetime
+    query_text: str
+    latency_ms: int
+    estimated_cost_usd: float
+    faithfulness: float | None = None
+    feedback_rating: Literal[-1, 1] | None = None
+
+
+class TraceListResponse(BaseModel):
+    """GET /traces response envelope (docs/api.md §4)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    items: list[TraceListItem]
+    next_cursor: str | None = None
+
+
+class SpanInResponse(BaseModel):
+    """Per-span shape inside GET /traces/{trace_id} (docs/api.md §5)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    span_id: UUID
+    parent_span_id: UUID | None = None
+    name: str
+    started_at: datetime
+    ended_at: datetime | None = None
+    attrs: dict[str, Any]
+
+
+class SpanPayloadResponse(BaseModel):
+    """Per-span payload entry inside GET /traces/{trace_id}.payloads (docs/api.md §5)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    payload: dict[str, Any]
+
+
+class TraceDetailResponse(BaseModel):
+    """GET /traces/{trace_id} response envelope (docs/api.md §5)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    trace: TraceListItem
+    spans: list[SpanInResponse]
+    payloads: dict[str, SpanPayloadResponse]
+
+
+# ---------------------------------------------------------------------------
+# Common Error Envelope (docs/api.md §"Common Error Envelope")
+# ---------------------------------------------------------------------------
+
+
+class ErrorDetail(BaseModel):
+    """One field-level error inside ErrorResponse.details."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    field: str | None = None
+    message: str
+
+
+class ErrorResponse(BaseModel):
+    """Canonical error envelope returned on 4xx / 5xx responses.
+
+    ``error_code`` is uppercase + underscores (e.g., ``INVALID_REQUEST``,
+    ``TRACE_NOT_FOUND``). ``request_id`` correlates to the rag.request root
+    span trace_id so an operator can pivot from the error envelope to the
+    trace explorer without re-keying.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    error_code: Annotated[str, Field(pattern=r"^[A-Z_]+$")]
+    message: str
+    details: list[ErrorDetail] = []
+    request_id: UUID
