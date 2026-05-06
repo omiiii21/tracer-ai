@@ -96,8 +96,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans:** 6 plans
 
 Plans:
-**Wave 1**
-- [ ] 04-01-PLAN.md -- Schema migration (alembic 0002 adds latency_ms / faithfulness / feedback_rating / estimated_cost_usd + 2026-08 spans partition); Span model field swap (payload_id -> payload); pipeline.py up-front INSERT INTO traces + payload= per child span + UPDATE traces after _emit_root
+**Wave 1** *(complete 2026-05-06)*
+- [x] 04-01-PLAN.md -- Schema migration (alembic 0002 adds latency_ms / faithfulness / feedback_rating / estimated_cost_usd + 2026-08 spans partition); Span model field swap (payload_id -> payload); pipeline.py up-front INSERT INTO traces + payload= per child span + UPDATE traces after _emit_root — see 04-01-SUMMARY.md
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 04-02-PLAN.md -- BoundedDropOldestQueue (D-4.06) + saturation logging (D-4.08); standalone unit tests for drop-oldest invariant + concurrent producers + rate-limited log

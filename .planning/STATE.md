@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 4 context gathered
-last_updated: "2026-05-06T14:53:35.926Z"
-last_activity: 2026-05-06 -- Phase 04 planning complete
+stopped_at: Phase 4 Plan 01 complete; Plan 02 next
+last_updated: "2026-05-06T15:30:00.000Z"
+last_activity: 2026-05-06 -- Phase 04 Plan 01 complete (3 commits)
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 29
-  completed_plans: 23
-  percent: 79
+  completed_plans: 24
+  percent: 83
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-04)
 
 **Core value:** When a RAG bot misanswers, the operator can open the trace and see exactly which stage failed — retriever returned wrong chunks, LLM ignored the right chunks, corpus was stale, prompt template degraded. Per-step traces with semantic quality metrics turn debugging from guesswork into diagnosis.
-**Current focus:** Phase 1 — Research & Design Artifacts
+**Current focus:** Phase 04 — tracer-trace-explorer
 
 ## Current Position
 
-Phase: 3 (execution complete; verification gaps documented in 03-VERIFICATION.md)
-Plan: Phase 3 9/9 complete — next: `/gsd-discuss-phase 4` (Tracer + Trace Explorer)
-Status: Ready to execute
-Last activity: 2026-05-06 -- Phase 04 planning complete
+Phase: 04 (tracer-trace-explorer) — EXECUTING
+Plan: 2 of 6 (Plan 01 complete; Plan 02 next — BoundedDropOldestQueue + saturation logging)
+Status: Executing Phase 04
+Last activity: 2026-05-06 -- Phase 04 Plan 01 complete (3 atomic commits 289e21d, 9175a20, a3d2c72; SUMMARY at .planning/phases/04-tracer-trace-explorer/04-01-SUMMARY.md)
 
-Progress: [██████░░░░░░░░] 43% of milestone; 3/7 phases complete
+Progress: [███████░░░░░░░] 50% of milestone; 3/7 phases complete; 1/6 Phase-4 plans complete
 
 ## Performance Metrics
 
@@ -46,6 +46,7 @@ Progress: [██████░░░░░░░░] 43% of milestone; 3/7 pha
 |-------|-------|-------|----------|
 | 1 | 8 | - | - |
 | 2 | 6 / 6 (~3h 6m total — 02-01 ~18m + 02-02 ~22m + 02-03 ~28m + 02-04 ~30m + 02-05 ~38m + 02-06 ~50m) | ~3h 6m | ~31m / plan |
+| 4 | 1 / 6 (04-01 ~25m) | ~25m so far | ~25m / plan |
 
 **Recent Trend:**
 
@@ -97,6 +98,11 @@ Recent decisions affecting current work:
 - Plan 01-08: docs/_verification.md authored (281 LOC) — Phase 1 verification gate Overall: PASS. Pre-flight 14/14 canonical /docs/ artifacts present and non-empty. Verbatim spawn prompt (the enhanced version locked in 01-08-PLAN.md Step 2 with mandatory Cited files: line + AGENT_REPORT: PASS/FAIL ending) + verbatim sub-agent Raw Response captured before per-question scoring (Repudiation mitigation T-01-08-02). Q1..Q5 each have sub-agent answer + Cited files: + required-elements PASS table + Status: PASS line; Scope Audit table over all 13 cited paths confirms 13/13 begin with `docs/` and 0/13 match the deny-list. (See .planning/phases/01-research-design-artifacts/01-08-SUMMARY.md.)
 - Phase 1 EXIT: all 5 ROADMAP success criteria for Phase 1 satisfied — (1) all 9 GSD-OPEN-N items have ADRs in /docs/decisions/ via Plan 01-01, (2) fresh agent given only /docs/ answered Q1..Q5 PASS via Plan 01-08, (3) 12-query coverage_set.yaml authored via Plan 01-03, (4) module-deps.md visual acyclicity confirmed via Plan 01-02, (5) ADR 010-scope-trim.md cut order documented via Plan 01-01. Phase 2 (Skeleton & Infrastructure — INFRA-01..05) entry unblocked.
 - Sub-Agent Provenance Note pattern established for verification plans: when the executor's tool surface lacks a sub-agent spawn tool, document the constraint transparently and run the check in-process under the same scope restriction rather than fabricating a transcript (Threat T-01-08-05 / Spoofing mitigated by honest disclosure). The Scope Audit (every cited path inspected against the deny-list) preserves the substantive guarantee regardless of who/what authored the answers. Future verification plans should adopt the same pattern when spawn tools are unavailable.
+- Plan 04-01: alembic 0002_traces_denorm.py adds 4 denormalized columns (latency_ms, faithfulness, feedback_rating, estimated_cost_usd) + traces_feedback_rating_chk CHECK + traces_faithfulness_idx + traces_feedback_rating_idx + 2026-08 spans partition; reversibility drill (up/down/up) clean; 0001_initial.py byte-identical (D-2.17 enforced). RESEARCH §Open Questions #1 surfaced that estimated_cost_usd was missing from D-4.02 even though docs/api.md TraceListItem requires it — added to the migration. (See 04-01-SUMMARY.md.)
+- Plan 04-01: Span Pydantic model atomic field swap — removed payload_id: UUID | None, added payload: dict[str, Any] | None = None (D-4.11/D-4.13). TraceWriter Protocol + Noop/Stdout adapters untouched. extra='forbid' now rejects payload_id (regression test added).
+- Plan 04-01: Pipeline accepts db_pool: asyncpg.Pool | None = None kwarg. When set, every chat request lands a traces row up-front (INSERT INTO traces with query[:4000] truncation matching docs/api.md ChatRequest max_length and ON CONFLICT (id) DO NOTHING idempotent guard) BEFORE embed_batch; finalizes latency_ms + ended_at via UPDATE traces after _emit_root and estimated_cost_usd via UPDATE traces inside _llm_text_iter finally (closure-captures trace_id and self._db_pool from _orchestrate scope, preserves async-cancellation safety per Pitfall 7.8).
+- Plan 04-01: Closure-capture verification pattern established: integration test asserts ALL 3 SQL ops fire (INSERT INTO traces, UPDATE latency_ms, UPDATE estimated_cost_usd) AND that the trace_id argument is consistent across all 3 (proves trace_id is captured from _orchestrate scope, not re-uuid4()'d in different scopes). Failure of any one indicates a broken closure capture.
+- Plan 04-01: 4 child-span payload contracts locked per docs/trace-schema.md — rag.retrieve carries `{"retrieved_chunks": [{chunk_id, content, score, doc_id, doc_section}]}` if chunks else None; rag.prompt_assemble carries `{"messages": [...], "prompt_template_id": "..."}` if messages else None; rag.llm_call carries `{"response": {"answer", "input_tokens", "output_tokens", "estimated_cost_usd"}}` if final_event else None; rag.request (root) carries payload=None explicitly (D-4.11). Phase 4 Plan 03 PostgresTraceWriter.flush() will INSERT INTO span_payloads from these dicts.
 
 ### Pending Todos
 
@@ -119,6 +125,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-06T12:59:51.159Z
-Stopped at: Phase 4 context gathered
-Resume file: .planning/phases/04-tracer-trace-explorer/04-CONTEXT.md
+Last session: 2026-05-06T15:30:00.000Z
+Stopped at: Phase 4 Plan 01 complete; Plan 02 next
+Resume file: .planning/phases/04-tracer-trace-explorer/04-02-PLAN.md
