@@ -31,6 +31,11 @@ class Span(BaseModel):
     Attribute keys in ``attrs`` come from ``tracer_ai/tracer/span.py``
     constants (e.g., ``GEN_AI_PROVIDER_NAME``); Phase 3 pipeline emit sites
     consume the constants by name.
+
+    Phase 4 D-4.11: heavy JSONB payload (full prompts, retrieved chunks, LLM
+    responses) lives here; the writer adapter splits row+payload into spans +
+    span_payloads INSERTs at persist time. ``payload`` is ``None`` for the
+    root ``rag.request`` span and populated on the three child spans.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -42,7 +47,7 @@ class Span(BaseModel):
     started_at: datetime
     ended_at: datetime | None = None
     attrs: dict[str, Any] = Field(default_factory=dict)
-    payload_id: UUID | None = None
+    payload: dict[str, Any] | None = None
 
 
 @runtime_checkable

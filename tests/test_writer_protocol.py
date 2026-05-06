@@ -37,7 +37,7 @@ def _valid_span() -> Span:
         started_at=datetime.now(UTC),
         ended_at=None,
         attrs={"gen_ai.provider.name": "anthropic"},
-        payload_id=None,
+        payload=None,
     )
 
 
@@ -96,6 +96,47 @@ def test_span_rejects_extra_field() -> None:
             started_at=datetime.now(UTC),
             unknown="bad",
         )
+
+
+def test_span_rejects_legacy_payload_id_field() -> None:
+    """Phase 4 D-4.13: ``payload_id`` is removed; extra='forbid' must reject it."""
+    with pytest.raises(ValidationError):
+        Span(  # type: ignore[call-arg]
+            trace_id=uuid4(),
+            span_id=uuid4(),
+            parent_span_id=None,
+            name="rag.request",
+            started_at=datetime.now(UTC),
+            payload_id=uuid4(),
+        )
+
+
+def test_span_accepts_payload_dict() -> None:
+    """Phase 4 D-4.11: ``payload`` carries a JSONB-shaped dict; round-trip preserved."""
+    sample_payload: dict[str, object] = {"messages": [{"role": "user", "content": "hi"}]}
+    span = Span(
+        trace_id=uuid4(),
+        span_id=uuid4(),
+        parent_span_id=None,
+        name="rag.prompt_assemble",
+        started_at=datetime.now(UTC),
+        ended_at=None,
+        attrs={},
+        payload=sample_payload,
+    )
+    assert span.payload == sample_payload
+
+
+def test_span_payload_defaults_to_none() -> None:
+    """Phase 4 D-4.11: omitting ``payload`` defaults to None (root spans pass None)."""
+    span = Span(
+        trace_id=uuid4(),
+        span_id=uuid4(),
+        parent_span_id=None,
+        name="rag.request",
+        started_at=datetime.now(UTC),
+    )
+    assert span.payload is None
 
 
 # ---------------------------------------------------------------------------
