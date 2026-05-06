@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Research & Design Artifacts** - Produce all ADRs, diagrams, specs, and wireframes; no code until done
 - [x] **Phase 2: Skeleton & Infrastructure** - Repo scaffold, Docker Compose boots green, pre-commit hooks, README skeleton
 - [x] **Phase 3: RAG Pipeline + Chat UI + Corpus Admin** - Working RAG chat with citations, corpus ingestion CLI, admin UI
-- [ ] **Phase 4: Tracer + Trace Explorer** - Span emission, async trace write path, trace list/detail dashboard views
+- [x] **Phase 4: Tracer + Trace Explorer** - Span emission, async trace write path, trace list/detail dashboard views
 - [ ] **Phase 5: Quality Layer + Feedback** - LLM-as-judge eval, feedback endpoint, bad-answer queue, time-series charts
 - [ ] **Phase 6: Eval CLI + Regression Set** - Regression CLI running both proactive and reactive query sets
 - [ ] **Phase 7: Polish + Demo Path** - README, screenshots, cost widget, trace export, scripted demo, clean-state acceptance test
@@ -107,8 +107,8 @@ Plans:
 - [x] 04-04-PLAN.md -- TraceStore Protocol + PostgresTraceStore (TRCR-05 three methods, dict[str, Any] returns to preserve module-deps DAG); GET /traces (cursor pagination + 8 filter params) + GET /traces/{trace_id} (two-query pattern); feedback.py wraps INSERT + UPDATE in atomic asyncpg transaction (D-4.03/T-04-04-08) — see 04-04-SUMMARY.md
 - [x] 04-05-PLAN.md -- Frontend Dashboard.tsx + TraceDetail.tsx + SpanWaterfall.tsx; install missing shadcn primitives (tabs/table/slider/tooltip/select) + ky; route migration /traces/:id -> /dashboard + /dashboard/traces/:trace_id; MetadataStrip link target updated; TraceStub deleted — see 04-05-SUMMARY.md
 
-**Wave 4** *(blocked on Wave 3 completion)*
-- [ ] 04-06-PLAN.md -- Phase 4 verification gate: TRCR-08 p95 benchmark + end-to-end pipeline-with-PostgresTraceWriter + alembic reversibility + lifespan drain; TRCR-02/03 conformance audit; TRCR-04 explicitly DEFERRED to Phase 5 EVAL-04
+**Wave 4** *(complete 2026-05-06 — Phase 4 EXIT)*
+- [x] 04-06-PLAN.md -- Phase 4 verification gate: TRCR-08 p95 benchmark (delta -14.78ms vs 100ms budget) + end-to-end pipeline-with-PostgresTraceWriter (1 INSERT + 2 UPDATEs + 4 spans + 3 payloads) + alembic reversibility (live docker compose; 21.66s) + lifespan drain warn-log path; TRCR-02/03 conformance audit clean; TRCR-04 explicitly DEFERRED to Phase 5 EVAL-04 with rationale; 13/14 requirements PASS, 1 DEFERRED — see 04-06-SUMMARY.md and 04-VERIFICATION.md
 **UI hint**: yes
 
 ### Phase 5: Quality Layer + Feedback
@@ -157,7 +157,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 1. Research & Design Artifacts | 8/8 | Complete    | 2026-05-04 |
 | 2. Skeleton & Infrastructure | 6/6 | Complete    | 2026-05-04 |
 | 3. RAG Pipeline + Chat UI + Corpus Admin | 9/9 | Complete (with 1 carried gap) | 2026-05-05 |
-| 4. Tracer + Trace Explorer | 5/6 | In progress | - |
+| 4. Tracer + Trace Explorer | 6/6 | Complete    | 2026-05-06 |
 | 5. Quality Layer + Feedback | 0/TBD | Not started | - |
 | 6. Eval CLI + Regression Set | 0/TBD | Not started | - |
 | 7. Polish + Demo Path | 0/TBD | Not started | - |

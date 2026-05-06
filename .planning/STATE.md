@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 4 Plan 05 complete; Plan 06 next (phase verifier)
-last_updated: "2026-05-06T17:18:30.000Z"
-last_activity: 2026-05-06 -- Phase 04 Plan 05 complete (5 atomic commits)
+stopped_at: Phase 4 complete (Phase 4 EXIT granted); Phase 5 next
+last_updated: "2026-05-06T17:53:57.000Z"
+last_activity: 2026-05-06 -- Phase 04 Plan 06 complete (4 atomic commits) -- Phase 4 EXIT granted
 progress:
   total_phases: 7
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 29
-  completed_plans: 28
-  percent: 97
+  completed_plans: 29
+  percent: 100
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 
 ## Current Position
 
-Phase: 04 (tracer-trace-explorer) — EXECUTING
-Plan: 6 of 6 (Plans 01-05 complete; Plan 06 next — Phase 4 verifier: synthetic-load p95 + end-to-end fresh-checkout drill)
-Status: Executing Phase 04
-Last activity: 2026-05-06 -- Phase 04 Plan 05 complete (5 atomic commits 6e61de5, 8d5ba4a, f61f8de, 4097af6, dad14a3; SUMMARY at .planning/phases/04-tracer-trace-explorer/04-05-SUMMARY.md)
+Phase: 04 (tracer-trace-explorer) — COMPLETE; Phase 5 (Quality Layer + Feedback) next
+Plan: 6 of 6 complete (Phase 4 EXIT granted via 04-VERIFICATION.md)
+Status: Phase 04 complete; Phase 5 entry unblocked
+Last activity: 2026-05-06 -- Phase 04 Plan 06 complete (4 atomic commits 8a37ec6, f17ac01, 70948cc, 4f41990; SUMMARY at .planning/phases/04-tracer-trace-explorer/04-06-SUMMARY.md; VERIFICATION at .planning/phases/04-tracer-trace-explorer/04-VERIFICATION.md)
 
-Progress: [█████████████░] 97% of milestone; 3/7 phases complete; 5/6 Phase-4 plans complete
+Progress: [██████████████] 100% of milestone (planned plans); 4/7 phases complete; 6/6 Phase-4 plans complete
 
 ## Performance Metrics
 
@@ -46,7 +46,7 @@ Progress: [█████████████░] 97% of milestone; 3/7 pha
 |-------|-------|-------|----------|
 | 1 | 8 | - | - |
 | 2 | 6 / 6 (~3h 6m total — 02-01 ~18m + 02-02 ~22m + 02-03 ~28m + 02-04 ~30m + 02-05 ~38m + 02-06 ~50m) | ~3h 6m | ~31m / plan |
-| 4 | 5 / 6 (04-01 ~25m + 04-02 ~10m + 04-03 ~20m + 04-04 ~13m + 04-05 ~17m) | ~85m so far | ~17m / plan |
+| 4 | 6 / 6 (04-01 ~25m + 04-02 ~10m + 04-03 ~20m + 04-04 ~13m + 04-05 ~17m + 04-06 ~28m) | ~113m total | ~19m / plan |
 
 **Recent Trend:**
 
@@ -127,6 +127,11 @@ Recent decisions affecting current work:
 - Plan 04-05: Route migration complete (D-4.17) — old /traces/:trace_id stub replaced by /dashboard + /dashboard/traces/:trace_id under AppShell; Dashboard NavLink inserted between Chat and Admin (rendered nav order [Chat | Dashboard | Admin] matches docs/wireframes/README.md); MetadataStrip "View trace" link target rewritten from /traces/${id} to /dashboard/traces/${id} (T-04-05-06 mitigation — Phase 3 chat deeplinks now reach the production explorer instead of the deleted stub); TraceStub.tsx deleted with zero dangling references.
 - Plan 04-05: React 18 + Tailwind 3 pin gates intact post-install — `npm pkg get` confirms `dependencies.react=^18.3.1` + `devDependencies.tailwindcss=^3.4.0`. Phase 2 D-2.30 contract preserved through 4 Radix peer dep additions + ky.
 - Plan 04-05: EXPL-01 (filter dimensions) + EXPL-02 (detail tree) + EXPL-03 (/dashboard list page) + EXPL-04 (/dashboard/traces/:id detail page) all closed pending Plan 04-06 phase-end live boot drill.
+- Plan 04-06: Phase 4 verification gate ships — TRCR-08 p95 perf benchmark (`tests/perf/test_trace_write_p95.py` measured delta -14.78ms vs 100ms budget) + end-to-end pipeline-to-PostgresTraceWriter integration (`tests/integration/test_pipeline_with_postgres_writer.py` asserts 1 INSERT INTO traces + 2 traces UPDATEs + 4 spans rows + 3 span_payloads rows) + alembic upgrade-downgrade-upgrade reversibility (live docker compose, 21.66s) + lifespan shutdown drain warn-log path test (real lifespan(app) ctx mgr + slow pool injection). 4 atomic commits (8a37ec6, f17ac01, 70948cc, 4f41990); ~28min duration; 6 files created + 1 modified. (See 04-06-SUMMARY.md.)
+- Plan 04-06: TRCR-08 perf gate template locked — warmup discard (10 iterations) + 200 timed samples + statistics.quantiles(samples, n=20)[18] for p95 + back-to-back baseline-vs-phaseN comparison + assert delta <= budget + print [GATE NAME] block via -s for human-readable verification. Future perf gates (Phase 5 EVAL-05 latency budget, Phase 7 demo-startup p95) reuse this shape verbatim.
+- Plan 04-06: Rule 1 fix in `tracer_ai/rag/pipeline.py` — rag.prompt_assemble payload now stores `[m.model_dump(mode="json") for m in messages]` instead of raw Pydantic Message objects. Without this fix the PostgresTraceWriter consumer's `json.dumps(s.payload)` raises `TypeError: Object of type Message is not JSON serializable` and the spans+payloads batch never lands. Bug surfaced by Task 2 integration test; fix lands atomically with the test that exposed it (commit f17ac01). Pre-existing bug from Plan 04-01 that unit tests with FakePool recorders did not catch (recorders don't call json.dumps).
+- Plan 04-06: TRCR-04 explicitly DEFERRED to Phase 5 EVAL-04 with rationale recorded in 04-VERIFICATION.md TRCR-04 Deferral section. Phase 4 sync 4-span emission passes parent_span_id explicitly via uuid4(); the cross-task context-snapshot pattern is needed for the BackgroundTasks async eval branch (per docs/sequence-diagrams.md Note callout). Phase 4 stays free of any opentelemetry-* runtime dep (ADR 005 compliance preserved).
+- Plan 04-06: Phase 4 EXIT GRANTED — all 4 ROADMAP Phase 4 success criteria PASS (cited evidence in 04-VERIFICATION.md); 13/14 requirements PASS; TRCR-04 DEFERRED. Phase 5 entry unblocked.
 
 ### Pending Todos
 
@@ -149,6 +154,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-06T17:18:30.000Z
-Stopped at: Phase 4 Plan 05 complete; Plan 06 next (phase verifier)
-Resume file: .planning/phases/04-tracer-trace-explorer/04-06-PLAN.md
+Last session: 2026-05-06T17:53:57.000Z
+Stopped at: Phase 4 complete (EXIT granted); Phase 5 (Quality Layer + Feedback) next
+Resume file: .planning/phases/05-quality-feedback/05-CONTEXT.md (when Phase 5 begins)

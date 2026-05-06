@@ -63,13 +63,13 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Tracer (Phase 4)
 
 - [x] **TRCR-01**: Span dataclass in `tracer/span.py` with OTel-aligned + RAG-specific attributes; all attribute names defined as constants in one file
-- [ ] **TRCR-02**: Use `gen_ai.provider.name` (NOT deprecated `gen_ai.system`); follow OTel GenAI naming for `gen_ai.operation.name`, `gen_ai.request.model`, `gen_ai.usage.input_tokens`, `gen_ai.usage.output_tokens`
-- [ ] **TRCR-03**: Custom `rag.*` attributes for `rag.retrieved_chunks`, `rag.retrieval.score.{mean,min}`, `rag.prompt_template.id`, `rag.eval.{faithfulness,relevance,judge_model,judge_cost_usd}`
-- [ ] **TRCR-04**: Context propagation: `start_span`, `current_span`, `set_span_in_context` helpers wrapping OTel `opentelemetry-api` context
+- [x] **TRCR-02**: Use `gen_ai.provider.name` (NOT deprecated `gen_ai.system`); follow OTel GenAI naming for `gen_ai.operation.name`, `gen_ai.request.model`, `gen_ai.usage.input_tokens`, `gen_ai.usage.output_tokens`
+- [x] **TRCR-03**: Custom `rag.*` attributes for `rag.retrieved_chunks`, `rag.retrieval.score.{mean,min}`, `rag.prompt_template.id`, `rag.eval.{faithfulness,relevance,judge_model,judge_cost_usd}`
+- [ ] **TRCR-04**: Context propagation: `start_span`, `current_span`, `set_span_in_context` helpers wrapping OTel `opentelemetry-api` context (DEFERRED to Phase 5 EVAL-04 per 04-VERIFICATION.md)
 - [x] **TRCR-05**: `TraceStore` Protocol with methods `write_span`, `get_trace`, `list_traces`
 - [x] **TRCR-06**: Postgres+JSONB exporter writes via bounded `asyncio.Queue(maxsize=1000)` with `put_nowait`; background consumer batches inserts
 - [x] **TRCR-07**: Lifespan shutdown handler drains the span queue (force-flush) before exit
-- [ ] **TRCR-08**: Trace write adds ≤100ms p95 to request path (measured in CI)
+- [x] **TRCR-08**: Trace write adds ≤100ms p95 to request path (measured in CI)
 - [x] **TRCR-09**: Full prompt + response payloads stored in `span_payloads` side table (JSONB) — referenced by `span_id`, not on span row directly
 - [x] **TRCR-10**: Every chat request emits trace with spans `rag.request` (root) → `rag.retrieve`, `rag.prompt_assemble`, `rag.llm_call`
 
@@ -207,13 +207,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ADMN-03 | Phase 3 | Pending |
 | ADMN-04 | Phase 3 | Pending |
 | TRCR-01 | Phase 4 Plan 01 | Complete |
-| TRCR-02 | Phase 4 | Pending |
-| TRCR-03 | Phase 4 | Pending |
-| TRCR-04 | Phase 4 | Pending |
+| TRCR-02 | Phase 4 Plan 06 | Complete |
+| TRCR-03 | Phase 4 Plan 06 | Complete |
+| TRCR-04 | Phase 5 EVAL-04 | Deferred (per 04-VERIFICATION.md) |
 | TRCR-05 | Phase 4 Plan 04 | Complete |
 | TRCR-06 | Phase 4 Plan 02 (queue) + Plan 03 (writer/consumer) | Complete |
 | TRCR-07 | Phase 4 Plan 03 | Complete |
-| TRCR-08 | Phase 4 Plan 06 | Pending |
+| TRCR-08 | Phase 4 Plan 06 | Complete |
 | TRCR-09 | Phase 4 Plan 01 | Complete |
 | TRCR-10 | Phase 4 Plan 01 | Complete |
 | EXPL-01 | Phase 4 Plan 04 | Complete |
