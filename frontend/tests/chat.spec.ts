@@ -11,11 +11,9 @@ function sseBody(opts: {
   trace_id: string;
   cited_chunks?: Array<{
     idx: number;
-    doc_id: string;
-    doc_section: string;
+    doc_url: string;
     section_title: string;
-    source_url: string;
-    content: string;
+    text: string;
     score: number;
   }>;
   latency_ms?: number;
@@ -42,12 +40,9 @@ function sseBody(opts: {
 
 const SAMPLE_CHUNK = {
   idx: 1,
-  doc_id: "claude-docs/tool-use",
-  doc_section: "tools",
+  doc_url: "https://docs.anthropic.com/en/api/tool-use",
   section_title: "Tool use overview",
-  source_url: "https://docs.anthropic.com/en/api/tool-use",
-  content:
-    "Tool use lets you give Claude access to client-side functions. When Claude decides a tool would help, it returns a tool_use block with arguments.",
+  text: "Tool use lets you give Claude access to client-side functions. When Claude decides a tool would help, it returns a tool_use block with arguments.",
   score: 0.87,
 };
 

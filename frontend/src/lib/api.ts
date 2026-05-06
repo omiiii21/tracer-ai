@@ -9,11 +9,9 @@ export interface ChatRequest {
 
 export interface Citation {
   idx: number;
-  doc_id: string;
-  doc_section: string;
+  doc_url: string;
   section_title: string;
-  source_url: string;
-  content: string;
+  text: string;
   score: number;
 }
 

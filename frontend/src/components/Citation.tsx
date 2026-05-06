@@ -33,7 +33,7 @@ interface CitationAccordionProps {
 
 /**
  * Expandable accordion listing every cited chunk with section_title,
- * doc_id, score, content, and source_url click-through.
+ * score, text, and doc_url click-through.
  */
 export const CitationAccordion = React.forwardRef<
   HTMLDivElement,
@@ -59,20 +59,19 @@ export const CitationAccordion = React.forwardRef<
                 className="mb-3 p-3 bg-muted rounded border border-border"
               >
                 <div className="text-xs font-medium mb-1">
-                  [{c.idx}] {c.doc_id} · {c.section_title} ·{" "}
-                  {c.score.toFixed(2)}
+                  [{c.idx}] {c.section_title} · {c.score.toFixed(2)}
                 </div>
                 <pre className="font-mono text-xs whitespace-pre-wrap text-muted-foreground">
-                  {c.content}
+                  {c.text}
                 </pre>
-                {c.source_url && (
+                {c.doc_url && (
                   <a
-                    href={c.source_url}
+                    href={c.doc_url}
                     target="_blank"
                     rel="noreferrer"
                     className="text-xs text-blue-600 hover:underline mt-1 inline-block"
                   >
-                    ↗ {c.source_url}
+                    ↗ {c.doc_url}
                   </a>
                 )}
               </div>
