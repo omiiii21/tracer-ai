@@ -66,17 +66,17 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **TRCR-02**: Use `gen_ai.provider.name` (NOT deprecated `gen_ai.system`); follow OTel GenAI naming for `gen_ai.operation.name`, `gen_ai.request.model`, `gen_ai.usage.input_tokens`, `gen_ai.usage.output_tokens`
 - [ ] **TRCR-03**: Custom `rag.*` attributes for `rag.retrieved_chunks`, `rag.retrieval.score.{mean,min}`, `rag.prompt_template.id`, `rag.eval.{faithfulness,relevance,judge_model,judge_cost_usd}`
 - [ ] **TRCR-04**: Context propagation: `start_span`, `current_span`, `set_span_in_context` helpers wrapping OTel `opentelemetry-api` context
-- [ ] **TRCR-05**: `TraceStore` Protocol with methods `write_span`, `get_trace`, `list_traces`
-- [ ] **TRCR-06**: Postgres+JSONB exporter writes via bounded `asyncio.Queue(maxsize=1000)` with `put_nowait`; background consumer batches inserts
-- [ ] **TRCR-07**: Lifespan shutdown handler drains the span queue (force-flush) before exit
+- [x] **TRCR-05**: `TraceStore` Protocol with methods `write_span`, `get_trace`, `list_traces`
+- [x] **TRCR-06**: Postgres+JSONB exporter writes via bounded `asyncio.Queue(maxsize=1000)` with `put_nowait`; background consumer batches inserts
+- [x] **TRCR-07**: Lifespan shutdown handler drains the span queue (force-flush) before exit
 - [ ] **TRCR-08**: Trace write adds ≤100ms p95 to request path (measured in CI)
 - [x] **TRCR-09**: Full prompt + response payloads stored in `span_payloads` side table (JSONB) — referenced by `span_id`, not on span row directly
 - [x] **TRCR-10**: Every chat request emits trace with spans `rag.request` (root) → `rag.retrieve`, `rag.prompt_assemble`, `rag.llm_call`
 
 ### Trace Explorer (Phase 4)
 
-- [ ] **EXPL-01**: `GET /traces` endpoint supports filtering by query text, time range, feedback rating, faithfulness score, latency bucket
-- [ ] **EXPL-02**: `GET /traces/{id}` returns full trace tree (root + all spans + payloads)
+- [x] **EXPL-01**: `GET /traces` endpoint supports filtering by query text, time range, feedback rating, faithfulness score, latency bucket
+- [x] **EXPL-02**: `GET /traces/{id}` returns full trace tree (root + all spans + payloads)
 - [ ] **EXPL-03**: `/dashboard` trace list view: searchable/filterable table with columns for query, time, latency, cost, faithfulness, feedback
 - [ ] **EXPL-04**: Trace detail view shows span waterfall (timing) and payload inspectors (chunks with scores, full assembled prompt, full LLM response)
 
@@ -210,14 +210,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TRCR-02 | Phase 4 | Pending |
 | TRCR-03 | Phase 4 | Pending |
 | TRCR-04 | Phase 4 | Pending |
-| TRCR-05 | Phase 4 | Pending |
-| TRCR-06 | Phase 4 Plan 02 (queue) + Plan 03 (writer/consumer) | In Progress (BoundedDropOldestQueue complete; PostgresTraceWriter + SpanConsumer pending in 04-03) |
-| TRCR-07 | Phase 4 | Pending |
-| TRCR-08 | Phase 4 | Pending |
+| TRCR-05 | Phase 4 Plan 04 | Complete |
+| TRCR-06 | Phase 4 Plan 02 (queue) + Plan 03 (writer/consumer) | Complete |
+| TRCR-07 | Phase 4 Plan 03 | Complete |
+| TRCR-08 | Phase 4 Plan 06 | Pending |
 | TRCR-09 | Phase 4 Plan 01 | Complete |
 | TRCR-10 | Phase 4 Plan 01 | Complete |
-| EXPL-01 | Phase 4 | Pending |
-| EXPL-02 | Phase 4 | Pending |
+| EXPL-01 | Phase 4 Plan 04 | Complete |
+| EXPL-02 | Phase 4 Plan 04 | Complete |
 | EXPL-03 | Phase 4 | Pending |
 | EXPL-04 | Phase 4 | Pending |
 | EVAL-01 | Phase 5 | Pending |

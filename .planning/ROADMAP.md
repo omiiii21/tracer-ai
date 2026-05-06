@@ -103,8 +103,8 @@ Plans:
 - [x] 04-02-PLAN.md -- BoundedDropOldestQueue (D-4.06) + saturation logging (D-4.08); standalone unit tests for drop-oldest invariant + concurrent producers + rate-limited log — see 04-02-SUMMARY.md
 - [x] 04-03-PLAN.md -- PostgresTraceWriter + SpanConsumer (50-spans-or-250ms batch flush via executemany); lifespan integration (Noop -> Postgres swap, 5s shutdown drain, drain -> cancel -> close pool ordering)
 
-**Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 04-04-PLAN.md -- TraceStore Protocol + PostgresTraceStore; GET /traces (cursor pagination + 6 filters) + GET /traces/{trace_id} (two-query pattern); feedback.py UPDATE traces SET feedback_rating in same transaction
+**Wave 3** *(in progress; 04-04 complete 2026-05-06)*
+- [x] 04-04-PLAN.md -- TraceStore Protocol + PostgresTraceStore (TRCR-05 three methods, dict[str, Any] returns to preserve module-deps DAG); GET /traces (cursor pagination + 8 filter params) + GET /traces/{trace_id} (two-query pattern); feedback.py wraps INSERT + UPDATE in atomic asyncpg transaction (D-4.03/T-04-04-08) — see 04-04-SUMMARY.md
 - [ ] 04-05-PLAN.md -- Frontend Dashboard.tsx + TraceDetail.tsx + SpanWaterfall.tsx; install missing shadcn primitives (tabs/table/slider/tooltip/select); route migration /traces/:id -> /dashboard + /dashboard/traces/:trace_id
 
 **Wave 4** *(blocked on Wave 3 completion)*

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 4 Plan 02 complete; Plan 03 next
-last_updated: "2026-05-06T16:00:00.000Z"
-last_activity: 2026-05-06 -- Phase 04 Plan 02 complete (2 commits)
+stopped_at: Phase 4 Plan 04 complete; Plan 05 next
+last_updated: "2026-05-06T17:01:30.000Z"
+last_activity: 2026-05-06 -- Phase 04 Plan 04 complete (5 atomic commits)
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 29
-  completed_plans: 25
-  percent: 86
+  completed_plans: 27
+  percent: 93
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 ## Current Position
 
 Phase: 04 (tracer-trace-explorer) — EXECUTING
-Plan: 3 of 6 (Plans 01-02 complete; Plan 03 next — PostgresTraceWriter + SpanConsumer + lifespan integration)
+Plan: 5 of 6 (Plans 01-04 complete; Plan 05 next — Frontend Dashboard + TraceDetail + SpanWaterfall)
 Status: Executing Phase 04
-Last activity: 2026-05-06 -- Phase 04 Plan 02 complete (2 atomic commits 2258839, 3fd37b6; SUMMARY at .planning/phases/04-tracer-trace-explorer/04-02-SUMMARY.md)
+Last activity: 2026-05-06 -- Phase 04 Plan 04 complete (5 atomic commits dd98d47, 019372c, 69f1271, d0a71a5, 89185b7; SUMMARY at .planning/phases/04-tracer-trace-explorer/04-04-SUMMARY.md)
 
-Progress: [████████░░░░░░] 50% of milestone; 3/7 phases complete; 2/6 Phase-4 plans complete
+Progress: [████████████░░] 87% of milestone; 3/7 phases complete; 4/6 Phase-4 plans complete
 
 ## Performance Metrics
 
@@ -46,7 +46,7 @@ Progress: [████████░░░░░░] 50% of milestone; 3/7 pha
 |-------|-------|-------|----------|
 | 1 | 8 | - | - |
 | 2 | 6 / 6 (~3h 6m total — 02-01 ~18m + 02-02 ~22m + 02-03 ~28m + 02-04 ~30m + 02-05 ~38m + 02-06 ~50m) | ~3h 6m | ~31m / plan |
-| 4 | 2 / 6 (04-01 ~25m + 04-02 ~10m) | ~35m so far | ~17.5m / plan |
+| 4 | 4 / 6 (04-01 ~25m + 04-02 ~10m + 04-03 ~20m + 04-04 ~13m) | ~68m so far | ~17m / plan |
 
 **Recent Trend:**
 
@@ -106,6 +106,16 @@ Recent decisions affecting current work:
 - Plan 04-02: tracer_ai/tracer/exporters/queue.py BoundedDropOldestQueue exports the locked D-4.06 API verbatim (__init__(maxsize) / async put(item)->bool / async get()->Any / qsize()->int). collections.deque + asyncio.Lock + asyncio.Event composite pattern — eliminates the put_nowait+except+get_nowait race window of asyncio.Queue under concurrent producers. _not_empty.clear() under lock AFTER confirming deque is empty is a load-bearing correctness invariant. (See 04-02-SUMMARY.md.)
 - Plan 04-02: rate-limited tracer.queue_saturated structured log via structlog (D-4.08) — at most once per 1s window; counter resets per period; log payload contains only dropped/window/queue_depth (T-04-02-04 — does NOT include item content). First drop on cold queue (last_log_at=0.0) ALWAYS fires immediately because now - 0.0 >= 1.0; subsequent drops within 1s accumulate into _dropped_count silently.
 - Plan 04-02: 9 unit tests verify the contract (>= 8 required by plan). Concurrent-producer determinism test (T-04-02-03 mitigation acceptance) confirms 5 concurrent put() calls at capacity all return False AND the surviving items are all from the new_* set (no race-window drift). Plan 04-03 PostgresTraceWriter unblocked: PostgresTraceWriter(queue=BoundedDropOldestQueue(maxsize=1000)) is the wiring contract.
+- Plan 04-03: tracer_ai/tracer/exporters/postgres.py PostgresTraceWriter (TraceWriter Protocol impl wrapping the queue) + SpanConsumer (background asyncio.Task with run / drain / _flush; first-of-50-or-250ms batch flush via asyncpg executemany; spans INSERT before span_payloads INSERT under one pool.acquire); ON CONFLICT (id, started_at) DO NOTHING idempotent INSERT against partitioned spans; emit() and run() both swallow exceptions (CLAUDE.md / T-04-03-04). Lifespan finally-block ordering invariant: drain (5s wait_for) -> cancel task -> close pool (D-4.10 / RESEARCH Pattern 3 / T-04-03-06 mitigation). 8 unit tests pass; mypy --strict + ruff + import_cycle_guard clean. (See 04-03-SUMMARY.md.)
+- Plan 04-04: tracer_ai/tracer/store.py TraceStore Protocol exposes 3 methods (get_trace + list_traces + write_span per TRCR-05) — runtime_checkable; PostgresTraceStore.__init__(pool, writer) takes BOTH the asyncpg pool AND an injected TraceWriter so write_span can be a thin pass-through (await self._writer.emit(span)) — satisfies TRCR-05's literal Protocol while preserving the TraceWriter-first separation of concerns (TRCR-06 owns the durable write path). (See 04-04-SUMMARY.md.)
+- Plan 04-04: TraceStore read methods return dict[str, Any] / tuple[list[dict[str, Any]], str | None] CANONICALLY (not Pydantic models). Reason: tracer_ai/tracer/ MUST stay below tracer_ai/api/ in the module-deps DAG (D-2.27); importing from api.schemas in store.py would fail import_cycle_guard. The route handler in api/traces.py constructs TraceListItem(**row) / SpanInResponse(**s) from the dicts. Pattern locked for future read-side abstractions across Phase 5+6.
+- Plan 04-04: list_traces SQL composes 8 filter params into ONE parameterized query with $N IS NULL OR <pred> guards and $N::TYPE casts; ORDER BY started_at DESC, id DESC + (started_at, id) < ($N::timestamptz, $M::uuid) keyset cursor (D-4.19); limit + 1 fetch idiom for next_cursor detection; WHERE latency_ms IS NOT NULL excludes in-flight traces (T-04-04-09 mitigation). get_trace does the locked two-query fetch (D-4.21) + coalesces NULL latency_ms / estimated_cost_usd to 0/0.0 for in-flight detail view.
+- Plan 04-04: encode_cursor / decode_cursor as base64(JSON {"started_at": ISO8601, "id": UUID-str}); decode raises ValueError on any malformed input (route handler converts to 400 INVALID_REQUEST envelope per docs/api.md). T-04-04-02 cursor-tampering mitigation acceptance verified via test_list_traces_rejects_invalid_cursor_with_400.
+- Plan 04-04: tracer_ai/api/traces.py FastAPI route module exposes GET /traces + GET /traces/{trace_id} with Annotated[T | None, Query(...)] validation on all 8 filter params (FastAPI/ruff B008-clean form). 422 on min_faithfulness > 1.0, feedback != up|down, limit > 200, max_latency_ms < 0; 400 INVALID_REQUEST on malformed cursor or trace_id UUID; 404 TRACE_NOT_FOUND on no-match. PostgresTraceStore constructed per-request with (pool, writer) from request.app.state — writer required for the TRCR-05 write_span method.
+- Plan 04-04: 5 new Pydantic v2 schemas (TraceListItem, TraceListResponse, SpanInResponse, SpanPayloadResponse, TraceDetailResponse) + canonical ErrorResponse + ErrorDetail envelope shipped in tracer_ai/api/schemas.py. All extra="forbid"; feedback_rating: Literal[-1, 1] | None mirrors DB CHECK (cross-layer integrity). TraceListItem.latency_ms / estimated_cost_usd are REQUIRED (not None-able) per docs/api.md §4 — store layer enforces this via the in-flight filter on list and coalesce on detail.
+- Plan 04-04: tracer_ai/api/feedback.py wraps INSERT feedback + UPDATE traces SET feedback_rating in a single combined async with (pool.acquire(...), conn.transaction()) — atomic per D-4.03 / T-04-04-08. 5 existing Phase 3 feedback tests still pass after _FakeConn extension (added execute() recorder + @asynccontextmanager async def transaction() no-op); 2 happy-path assertions updated from len(executed)==1 to ==2. Orphan feedback (T-03-06-07) still accepted: UPDATE affects 0 rows on forged trace_id.
+- Plan 04-04: 10 integration tests in tests/integration/test_traces_api.py (>= 9 required) cover list happy paths, in-flight SQL filter (T-04-04-09 acceptance), 400/422 validation errors, 404 missing detail, malformed UUID, full-tree round trip with payloads keyed by span_id. _build_app sets BOTH app.state.db_pool AND app.state.trace_writer (NoopTraceWriter) — mirrors the Phase 4 lifespan contract.
+- Plan 04-04: 5 deviations all surface-level (2 ruff style — Annotated[Query(...)] for B008, combined async with for SIM117; 1 contract-change test update — len(executed) == 2 after the new transaction body; 1 mypy --strict type-annotation fix on heterogeneous fixture dicts; 1 disclosure of phase-end live Docker drill deferral to Plan 04-06 per D-4.25). Zero scope creep.
 
 ### Pending Todos
 
@@ -128,6 +138,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-06T16:00:00.000Z
-Stopped at: Phase 4 Plan 02 complete; Plan 03 next
-Resume file: .planning/phases/04-tracer-trace-explorer/04-03-PLAN.md
+Last session: 2026-05-06T17:01:30.000Z
+Stopped at: Phase 4 Plan 04 complete; Plan 05 next
+Resume file: .planning/phases/04-tracer-trace-explorer/04-05-PLAN.md
