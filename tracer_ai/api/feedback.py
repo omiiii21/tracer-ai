@@ -30,11 +30,14 @@ affects 0 rows and the orphan feedback row stays in the table unlinked.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+from uuid import UUID
+
 import asyncpg
 import structlog
 from fastapi import APIRouter, Request
 
-from tracer_ai.api.schemas import FeedbackRequest, FeedbackResponse
+from tracer_ai.api.schemas import FeedbackRequest, FeedbackResolveResponse, FeedbackResponse
 
 log = structlog.get_logger()
 router = APIRouter()
@@ -79,3 +82,57 @@ async def post_feedback(body: FeedbackRequest, request: Request) -> FeedbackResp
         rating=body.rating,
     )
     return FeedbackResponse(id=row["id"], created_at=row["created_at"])
+
+
+@router.patch(
+    "/feedback/{trace_id}/resolved",
+    response_model=FeedbackResolveResponse,
+    status_code=200,
+)
+async def patch_feedback_resolved(
+    trace_id: UUID,
+    request: Request,
+) -> FeedbackResolveResponse:
+    """Mark all unresolved feedback rows for ``trace_id`` as resolved (FBCK-04 / D-5.15).
+
+    Idempotent: re-PATCHing returns ``rows_updated=0`` because already-resolved
+    rows are excluded by ``WHERE resolved_at IS NULL``. Never returns 404 —
+    orphan trace_ids are accepted (mirrors the POST /feedback T-03-06-07 stance).
+    Uses a single UPDATE with RETURNING; no transaction needed (one statement).
+
+    Pitfall 8: when there are multiple feedback rows for the same ``trace_id``,
+    ALL of them are marked resolved. This is the documented operator-intent
+    behavior — "this issue is fixed, regardless of who flagged it."
+
+    T-05-02-01 / T-05-02-02 mitigations: FastAPI's ``trace_id: UUID`` path
+    parameter rejects non-UUID input with 422 BEFORE the handler body runs;
+    asyncpg ``$1`` parameter binding prevents SQL injection regardless. Every
+    successful call emits the structlog ``feedback_resolved`` event with
+    ``trace_id`` + ``rows_updated`` for the audit trail.
+    """
+    pool: asyncpg.Pool = request.app.state.db_pool
+    # SQL on a single concatenated string literal so the substrings
+    # ``UPDATE feedback SET resolved_at`` and ``WHERE trace_id = $1 AND resolved_at IS NULL``
+    # are contiguous (cross-layer integrity grep gates in Plan 05-02 Task 2).
+    _patch_sql = (
+        "UPDATE feedback SET resolved_at = now() "
+        "WHERE trace_id = $1 AND resolved_at IS NULL "
+        "RETURNING id, resolved_at"
+    )
+    async with pool.acquire(timeout=1.0) as conn:
+        rows = await conn.fetch(_patch_sql, trace_id)
+    rows_updated = len(rows)
+    # If no rows were updated (idempotent re-PATCH or orphan trace_id), the
+    # response still needs a resolved_at timestamp — surface the current time
+    # so the response shape is consistent regardless of rows_updated.
+    resolved_at = rows[0]["resolved_at"] if rows else datetime.now(UTC)
+    log.info(
+        "feedback_resolved",
+        trace_id=str(trace_id),
+        rows_updated=rows_updated,
+    )
+    return FeedbackResolveResponse(
+        trace_id=trace_id,
+        resolved_at=resolved_at,
+        rows_updated=rows_updated,
+    )

@@ -105,6 +105,27 @@ class FeedbackResponse(BaseModel):
     created_at: datetime
 
 
+class FeedbackResolveResponse(BaseModel):
+    """PATCH /feedback/{trace_id}/resolved response body (FBCK-04 / D-5.15).
+
+    Idempotent: re-PATCHing returns ``rows_updated=0`` because already-resolved
+    rows are excluded by ``WHERE resolved_at IS NULL``. Never returns 404 —
+    orphan trace_ids are accepted (consistent with the POST /feedback
+    write-through pattern from Phase 4 / T-03-06-07).
+
+    Pitfall 8 acceptance: when there are multiple feedback rows for the same
+    ``trace_id``, ALL of them are marked resolved in a single PATCH. This is
+    the documented operator-intent behavior — "this issue is fixed regardless
+    of who flagged it."
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    trace_id: UUID
+    resolved_at: datetime
+    rows_updated: Annotated[int, Field(ge=0)]
+
+
 # ---------------------------------------------------------------------------
 # /admin/corpus  (GET)
 # ---------------------------------------------------------------------------

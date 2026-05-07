@@ -167,6 +167,42 @@ class FeedbackResponse(BaseModel):
 | 404    | `TRACE_NOT_FOUND` | `trace_id` does not exist |
 | 422    | `UNPROCESSABLE_ENTITY` | rating is not in {-1, 1} (also enforced by Pydantic Literal) |
 
+## PATCH /feedback/{trace_id}/resolved
+
+Mark all unresolved feedback rows for `trace_id` as resolved (Phase 5 FBCK-04 / D-5.15). This is the persistence side of the bad-answer-queue "Mark resolved" action — it sets `feedback.resolved_at = now()` for every row whose `trace_id` matches AND whose `resolved_at IS NULL`. The bad-answer queue (`/dashboard/queue`) excludes rows with `resolved_at IS NOT NULL`, so resolved items disappear from the queue immediately.
+
+**Idempotent** — re-PATCHing returns `rows_updated=0` because already-resolved rows are excluded by the `WHERE resolved_at IS NULL` clause. **Never returns 404** — orphan `trace_id` (no matching feedback rows) returns 200 with `rows_updated=0`, mirroring the POST /feedback "orphan trace_id is acceptable" precedent (T-03-06-07).
+
+**Pitfall 8 acceptance:** when there are multiple feedback rows for the same `trace_id` (e.g., the same operator double-flagged, or two operators flagged the same trace), ALL of them are marked resolved in a single PATCH. The response reports the total via `rows_updated`. This is the documented operator-intent behavior — "this issue is fixed, regardless of who flagged it."
+
+**Request body:** none (path parameter only).
+
+**Response schema:**
+
+```python
+class FeedbackResolveResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    trace_id: UUID
+    resolved_at: datetime
+    rows_updated: Annotated[int, Field(ge=0)]
+```
+
+**Example response body:**
+
+```json
+{
+  "trace_id": "550e8400-e29b-41d4-a716-446655440000",
+  "resolved_at": "2026-05-08T14:22:01Z",
+  "rows_updated": 1
+}
+```
+
+**Error responses:**
+
+| Status | error_code | When |
+|--------|------------|------|
+| 422    | `UNPROCESSABLE_ENTITY` | `trace_id` path parameter is not a valid UUID (FastAPI built-in validation) |
+
 ## GET /traces
 
 List traces with optional filters; cursor-paginated. The query parameters below are documented as a single Pydantic model for clarity (Phase 3 ADMN/EXPL routes consume them as individual `Query(...)` parameters in the FastAPI signature).
