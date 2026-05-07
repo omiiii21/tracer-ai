@@ -94,7 +94,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **FBCK-01**: `POST /feedback` accepts `{trace_id, rating, comment}`; persists to `feedback` table
 - [ ] **FBCK-02**: Thumbs-down lands the trace in the bad-answer queue within seconds
 - [ ] **FBCK-03**: Bad-answer queue view: filtered trace list where `feedback=down OR faithfulness < threshold`
-- [ ] **FBCK-04**: "Mark resolved" action on bad-answer queue items
+- [x] **FBCK-04**: "Mark resolved" action on bad-answer queue items
 - [ ] **FBCK-05**: Optional human-editable diagnosis tag on trace detail with values `{Retrieval, Prompt, Corpus, LLM}` (research-identified differentiator)
 - [ ] **FBCK-06**: Bad-answer queue sorted by score (lowest faithfulness first); items auto-close on subsequent re-pass
 - [ ] **FBCK-07**: Dashboard widget: queue size + items resolved this week
@@ -229,7 +229,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FBCK-01 | Phase 5 | Pending |
 | FBCK-02 | Phase 5 | Pending |
 | FBCK-03 | Phase 5 | Pending |
-| FBCK-04 | Phase 5 | Pending |
+| FBCK-04 | Phase 5 | Complete |
 | FBCK-05 | Phase 5 | Pending |
 | FBCK-06 | Phase 5 | Pending |
 | FBCK-07 | Phase 5 | Pending |

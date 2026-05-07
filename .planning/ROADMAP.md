@@ -121,11 +121,11 @@ Plans:
   3. Time-series charts on the dashboard populate as queries are made — latency p50/p95, cost over time, faithfulness mean, and manual feedback ratio are all visible
   4. The bad-answer queue has a "mark resolved" action and a dashboard widget showing queue size and items resolved this week
   5. A judge failure (timeout, rate limit, or exception) never causes a user-facing chat request to fail
-**Plans:** 7 plans
+**Plans:** 2/7 plans executed
 
 **Wave 1** *(parallel; foundations)*
 - [x] 05-01-PLAN.md — Eval foundation: tracer_ai/tracer/context.py hand-rolled contextvar helpers (D-5.06; closes TRCR-04) + tracer_ai/eval/{protocols,prompts,llm_judge}.py (Anthropic Haiku judge + tool_use forced + XML-delimited prompts + injection-escape + MockJudge + PROMPT_VERSION) + tracer_ai/config.py 4 new Settings fields (D-5.13/D-5.09/D-5.05/D-5.14) + ERROR_TYPE / RAG_EVAL_JUDGE_LATENCY_MS constants. EVAL-01 + EVAL-03.
-- [ ] 05-02-PLAN.md — alembic 0003_feedback_resolved.py (FBCK-04 / D-5.15) + PATCH /feedback/{trace_id}/resolved route + FeedbackResolveResponse schema; idempotent UPDATE; partial index for bad-answer queue exclusion. FBCK-01 + FBCK-02 + FBCK-04 + FBCK-06.
+- [x] 05-02-PLAN.md — alembic 0003_feedback_resolved.py (FBCK-04 / D-5.15) + PATCH /feedback/{trace_id}/resolved route + FeedbackResolveResponse schema; idempotent UPDATE; partial index for bad-answer queue exclusion. FBCK-01 + FBCK-02 + FBCK-04 + FBCK-06.
 - [ ] 05-03-PLAN.md — GET /admin/eval-config endpoint + EvalConfigResponse schema (D-5.13); single source of truth for runtime threshold + judge identity; lazy-import PROMPT_VERSION pattern. EVAL-06.
 
 **Wave 2** *(parallel; depends on Wave 1 contracts)*
@@ -171,6 +171,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 2. Skeleton & Infrastructure | 6/6 | Complete    | 2026-05-04 |
 | 3. RAG Pipeline + Chat UI + Corpus Admin | 9/9 | Complete (with 1 carried gap) | 2026-05-05 |
 | 4. Tracer + Trace Explorer | 6/6 | Complete    | 2026-05-06 |
-| 5. Quality Layer + Feedback | 0/7 | Not started | - |
+| 5. Quality Layer + Feedback | 2/7 | In Progress|  |
 | 6. Eval CLI + Regression Set | 0/TBD | Not started | - |
 | 7. Polish + Demo Path | 0/TBD | Not started | - |

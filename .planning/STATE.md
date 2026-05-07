@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 4 complete (EXIT granted); Phase 5 (Quality Layer + Feedback) next
-last_updated: "2026-05-07T17:54:47.851Z"
+stopped_at: Plan 05-02 complete (FBCK-04 Mark Resolved persistence + PATCH /feedback/{trace_id}/resolved); Plan 05-03 next
+last_updated: "2026-05-07T18:09:55.159Z"
 last_activity: 2026-05-07
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 36
-  completed_plans: 30
-  percent: 83
+  completed_plans: 31
+  percent: 86
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 ## Current Position
 
 Phase: 05 (quality-feedback) — EXECUTING
-Plan: 2 of 7
+Plan: 3 of 7
 Status: Ready to execute
 Last activity: 2026-05-07
 
-Progress: [████████░░] 83%
+Progress: [█████████░] 86%
 
 ## Performance Metrics
 
@@ -56,6 +56,7 @@ Progress: [████████░░] 83%
 
 *Updated after each plan completion*
 | Phase 05 P01 | 30m | 3 tasks | 13 files |
+| Phase 05 P02 | 30m | - tasks | - files |
 
 ## Accumulated Context
 
@@ -138,6 +139,8 @@ Recent decisions affecting current work:
 - [Phase ?]: Plan 05-01: Phase 5 eval-foundation shipped. Judge Protocol + AnthropicJudge (D-5.02 forced tool_use) + EvalScores with judge_cost_usd (EVAL-04 cost fix; cost from settings.pricing_claude_haiku_*) + MockJudge + PROMPT_VERSION='v1.ragas-faithfulness-relevance' (D-5.04) + SUBMIT_EVAL_TOOL ToolParam + module-level _judge_semaphore singleton (D-5.09) all importable from tracer_ai.eval. Hand-rolled contextvar helpers close TRCR-04 with zero opentelemetry-* runtime deps (D-5.06 / ADR 005 invariant preserved). 4 new Settings fields with bounded Field validators (D-5.13/D-5.09/D-5.05/D-5.14). Open Question 5 RESOLVED: calibration_date accepts both naive AND tz-aware. _escape_brackets entity-encodes < > & to defeat closing-tag injection (Pitfall #3 / EVAL-03; Test PromptD asserts exact-N closing-tag count). 26 net new unit tests across 4 test files; 228/228 unit suite green. (.planning/phases/05-quality-feedback/05-01-SUMMARY.md.)
 - [Phase ?]: Plan 05-01 pattern: anthropic.RateLimitError test construction REQUIRES real httpx.Response with attached httpx.Request because the SDK super().__init__ accesses response.request. SimpleNamespace fails AttributeError. APITimeoutError + APIConnectionError accept SimpleNamespace(url=) because their __init__ never reads .request. Future Phase 5 dispatcher failure-span tests reuse verbatim.
 - [Phase ?]: Plan 05-01 pattern: test files with module-top 'from tracer_ai.eval...' imports must os.environ.setdefault DATABASE_URL/ANTHROPIC_API_KEY/VOYAGE_API_KEY BEFORE the import (pytest autouse fixtures run only AFTER collection-time imports). Alt: deferred-imports-inside-test (test_llm_adapter.py pattern, used by test_llm_judge.py).
+- [Phase ?]: Plan 05-02: FBCK-04 Mark Resolved persistence shipped — alembic 0003 adds nullable resolved_at TIMESTAMPTZ + partial index feedback_unresolved_idx (trace_id) WHERE resolved_at IS NULL (supports queue exclusion + FBCK-07 KPI). PATCH /feedback/{trace_id}/resolved idempotent (rows_updated=0 on re-PATCH; never 404; Pitfall 8 — multiple feedback rows for one trace_id all resolve). FeedbackResolveResponse extra='forbid' schema. 9 net new tests + 251/251+1s full suite green. Commits d749993 + 5ed1b2d.
+- [Phase ?]: Plan 05-02 pattern: integration tests for new asyncpg-using routes use the FakePool/recorder shape (consistent with tests/integration/test_traces_api.py + test_pipeline_with_postgres_writer.py); the project's DB-end-to-end gate is tests/integration/test_alembic_reversibility.py which runs the live docker-compose alembic upgrade->downgrade->upgrade drill. Plans 05-03/05-04 should reuse this pattern (no real-asyncpg fixture needed).
 
 ### Pending Todos
 
@@ -160,6 +163,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-07T17:54:47.837Z
-Stopped at: Phase 4 complete (EXIT granted); Phase 5 (Quality Layer + Feedback) next
+Last session: 2026-05-07T18:09:55.148Z
+Stopped at: Plan 05-02 complete (FBCK-04 Mark Resolved persistence + PATCH /feedback/{trace_id}/resolved); Plan 05-03 next
 Resume file: None
