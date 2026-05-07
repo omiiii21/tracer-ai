@@ -1,4 +1,4 @@
-"""Tests for tracer_ai/api/admin.py (Phase 3 Plan 07 / ADMN-01..04).
+"""Tests for tracer_ai/api/admin.py (Phase 3 Plan 07 / ADMN-01..04 + Phase 5 Plan 03).
 
 CI-enforced witnesses:
   1. GET /admin/corpus -> 200 + CorpusState shape with chunking_config merged in.
@@ -9,6 +9,19 @@ CI-enforced witnesses:
   6. PATCH /admin/chunking-config {"chunk_size": 600, "overlap": 50} -> 200 + echoed.
   7. PATCH /admin/chunking-config {"chunk_size": 50, "overlap": 0} -> 422 (out of bounds).
   8. POST /admin/ingest {"urls": ["not-a-url"]} -> 422 (URL validator from Plan 01).
+
+Phase 5 Plan 03 (D-5.13 + FBCK-07):
+  EA1. GET /admin/eval-config -> 200 + default Settings
+       (threshold=0.6, judge_model, PROMPT_VERSION).
+  EA2. monkeypatch settings.bad_answer_faithfulness_threshold=0.55 -> 0.55.
+  EA3. monkeypatch settings.calibration_date=tz-aware -> ISO + offset.
+  EA4. EvalConfigResponse rejects extra fields (extra='forbid').
+  EA5. EvalConfigResponse rejects threshold > 1.0 (Field(ge=0.0, le=1.0)).
+  QH1. GET /admin/queue-health empty -> {queue_size: 0, resolved_this_week: 0}.
+  QH2. 3 unresolved thumbs-down rows -> queue_size=3.
+  QH3. 2 resolved-in-7d + 1 unresolved -> queue_size=1, resolved_this_week=2.
+  QH4. Resolved >7 days ago NOT counted in resolved_this_week.
+  QH5. QueueHealthResponse rejects extra fields + negative integers.
 
 Test isolation: each test resets ``tracer_ai.api.admin._jobs`` and
 ``_active_job_id`` via the autouse ``_reset_admin_state`` fixture so tests
@@ -70,7 +83,18 @@ class _FakeRow(dict[str, Any]):
 
 
 class _FakeConn:
-    """asyncpg.Connection stand-in returning canned aggregate + per-doc rows."""
+    """asyncpg.Connection stand-in returning canned aggregate + per-doc rows.
+
+    Supports per-instance ``fetchval_queue`` so Phase 5 Plan 03 /admin/queue-health
+    tests can inject (queue_size, resolved_this_week) values for the two
+    sequential ``conn.fetchval(...)`` calls.
+    """
+
+    def __init__(self, fetchval_queue: list[Any] | None = None) -> None:
+        # FIFO of canned ``fetchval`` returns; each call pops the head.
+        self._fetchval_queue: list[Any] = list(fetchval_queue or [])
+        # Recorder so tests can assert SQL substrings.
+        self.fetchval_calls: list[tuple[str, tuple[Any, ...]]] = []
 
     async def fetchrow(self, query: str, *args: Any) -> _FakeRow:
         # The list_corpus aggregate query.
@@ -101,20 +125,47 @@ class _FakeConn:
             ),
         ]
 
+    async def fetchval(self, query: str, *args: Any) -> Any:
+        """Pop next canned value; record the SQL for substring assertions.
+
+        Phase 5 Plan 03: GET /admin/queue-health issues two sequential
+        ``conn.fetchval(...)`` calls (queue_size then resolved_this_week).
+        Tests pre-load ``_fetchval_queue`` with the two ints.
+        """
+        self.fetchval_calls.append((query, args))
+        if not self._fetchval_queue:
+            return 0
+        return self._fetchval_queue.pop(0)
+
 
 class _FakeAcquireCtx:
+    def __init__(self, fetchval_queue: list[Any] | None = None) -> None:
+        self._fetchval_queue = fetchval_queue
+        self.last_conn: _FakeConn | None = None
+
     async def __aenter__(self) -> _FakeConn:
-        return _FakeConn()
+        self.last_conn = _FakeConn(fetchval_queue=self._fetchval_queue)
+        return self.last_conn
 
     async def __aexit__(self, *exc: Any) -> None:
         return None
 
 
 class _FakePool:
-    """asyncpg.Pool stand-in returning canned list_corpus rows."""
+    """asyncpg.Pool stand-in returning canned list_corpus rows.
+
+    ``fetchval_queue`` (Phase 5 Plan 03): canned values popped in order by
+    ``_FakeConn.fetchval`` so /admin/queue-health tests can drive the two
+    sequential COUNT queries deterministically.
+    """
+
+    def __init__(self, fetchval_queue: list[Any] | None = None) -> None:
+        self._fetchval_queue = fetchval_queue
+        self.last_acquire: _FakeAcquireCtx | None = None
 
     def acquire(self, timeout: float = 1.0) -> _FakeAcquireCtx:
-        return _FakeAcquireCtx()
+        self.last_acquire = _FakeAcquireCtx(fetchval_queue=self._fetchval_queue)
+        return self.last_acquire
 
 
 def _build_app(pool: Any | None = None) -> Any:
@@ -313,3 +364,238 @@ def test_post_ingest_with_valid_urls() -> None:
     body = resp.json()
     UUID(body["ingest_job_id"])
     assert body["status"] == "queued"
+
+
+# ---------------------------------------------------------------------------
+# Phase 5 Plan 03 — GET /admin/eval-config (D-5.13) tests EA1..EA5
+# ---------------------------------------------------------------------------
+
+
+def test_ea1_get_eval_config_returns_default_settings() -> None:
+    """EA1: GET /admin/eval-config returns default Settings + PROMPT_VERSION.
+
+    With Plan 05-01's PROMPT_VERSION importable, the endpoint returns:
+      {threshold: 0.6, judge_prompt_version: 'v1.ragas-faithfulness-relevance',
+       judge_model: 'claude-haiku-4-5-20251001', calibration_date: null}.
+    """
+    from fastapi.testclient import TestClient
+
+    app = _build_app()
+    client = TestClient(app)
+    resp = client.get("/admin/eval-config")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["threshold"] == 0.6
+    assert body["judge_prompt_version"] == "v1.ragas-faithfulness-relevance"
+    assert body["judge_model"] == "claude-haiku-4-5-20251001"
+    assert body["calibration_date"] is None
+    # extra='forbid' on response model -- shape must be exactly these 4 keys.
+    assert set(body.keys()) == {
+        "threshold",
+        "judge_prompt_version",
+        "judge_model",
+        "calibration_date",
+    }
+
+
+def test_ea2_get_eval_config_reflects_threshold_override(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """EA2: monkeypatch settings.bad_answer_faithfulness_threshold=0.55 -> echoed.
+
+    NOTE: ``_build_app()`` resolves ``from tracer_ai.api import admin`` via the
+    cached ``tracer_ai.api`` package attribute, so the ``admin`` module that
+    handles the request is the FIRST-IMPORTED one. Patching a freshly-imported
+    ``tracer_ai.config.settings`` would miss admin's binding. Instead, patch
+    the LIVE admin module's ``settings`` reference (which the route handler
+    closes over).
+    """
+    from fastapi.testclient import TestClient
+
+    # Force admin module load + patch the SAME settings instance the handler uses.
+    app = _build_app()
+    from tracer_ai.api import admin
+
+    monkeypatch.setattr(admin.settings, "bad_answer_faithfulness_threshold", 0.55)
+
+    client = TestClient(app)
+    resp = client.get("/admin/eval-config")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["threshold"] == 0.55
+
+
+def test_ea3_get_eval_config_serializes_calibration_date_iso8601(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """EA3: tz-aware calibration_date renders as ISO-8601 with offset.
+
+    NOTE on patching: see EA2 docstring -- patch the LIVE admin module's
+    ``settings`` reference (the one the handler closes over) so the override
+    survives the cached ``tracer_ai.api`` package attribute resolution.
+    """
+    from fastapi.testclient import TestClient
+
+    app = _build_app()
+    from tracer_ai.api import admin
+
+    cal = datetime(2026, 5, 15, 12, 0, 0, tzinfo=UTC)
+    monkeypatch.setattr(admin.settings, "calibration_date", cal)
+
+    client = TestClient(app)
+    resp = client.get("/admin/eval-config")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    # Pydantic v2 default ISO-8601 datetime serialization: '2026-05-15T12:00:00Z'
+    # OR '2026-05-15T12:00:00+00:00' depending on tz suffix style. Accept either.
+    raw = body["calibration_date"]
+    assert raw is not None
+    parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    assert parsed == cal
+
+
+def test_ea4_eval_config_response_rejects_extra_fields() -> None:
+    """EA4: EvalConfigResponse rejects extra fields (extra='forbid')."""
+    from pydantic import ValidationError
+
+    from tracer_ai.api.schemas import EvalConfigResponse
+
+    with pytest.raises(ValidationError):
+        EvalConfigResponse(
+            threshold=0.6,
+            judge_prompt_version="v1",
+            judge_model="m",
+            extra="x",  # type: ignore[call-arg]
+        )
+
+
+def test_ea5_eval_config_response_rejects_threshold_above_one() -> None:
+    """EA5: EvalConfigResponse rejects threshold > 1.0 (Field(ge=0.0, le=1.0))."""
+    from pydantic import ValidationError
+
+    from tracer_ai.api.schemas import EvalConfigResponse
+
+    with pytest.raises(ValidationError):
+        EvalConfigResponse(
+            threshold=1.5,
+            judge_prompt_version="v1",
+            judge_model="m",
+        )
+    # Lower bound also enforced.
+    with pytest.raises(ValidationError):
+        EvalConfigResponse(
+            threshold=-0.1,
+            judge_prompt_version="v1",
+            judge_model="m",
+        )
+
+
+# ---------------------------------------------------------------------------
+# Phase 5 Plan 03 — GET /admin/queue-health (FBCK-07) tests QH1..QH5
+# ---------------------------------------------------------------------------
+
+
+def test_qh1_get_queue_health_empty_returns_zero_zero() -> None:
+    """QH1: empty feedback table -> {queue_size: 0, resolved_this_week: 0}."""
+    from fastapi.testclient import TestClient
+
+    pool = _FakePool(fetchval_queue=[0, 0])
+    app = _build_app(pool=pool)
+    client = TestClient(app)
+    resp = client.get("/admin/queue-health")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body == {"queue_size": 0, "resolved_this_week": 0}
+
+
+def test_qh2_get_queue_health_three_unresolved() -> None:
+    """QH2: 3 unresolved thumbs-down rows -> queue_size=3."""
+    from fastapi.testclient import TestClient
+
+    # First fetchval: queue_size; second: resolved_this_week.
+    pool = _FakePool(fetchval_queue=[3, 0])
+    app = _build_app(pool=pool)
+    client = TestClient(app)
+    resp = client.get("/admin/queue-health")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["queue_size"] == 3
+    assert body["resolved_this_week"] == 0
+    # Verify the SQL substrings the route MUST issue.
+    acq = pool.last_acquire
+    assert acq is not None and acq.last_conn is not None
+    calls = acq.last_conn.fetchval_calls
+    assert len(calls) == 2
+    queue_sql = calls[0][0]
+    resolved_sql = calls[1][0]
+    assert "rating = -1" in queue_sql
+    assert "resolved_at IS NULL" in queue_sql
+    assert "resolved_at >=" in resolved_sql
+    assert "7 days" in resolved_sql
+
+
+def test_qh3_get_queue_health_mixed_resolved_unresolved() -> None:
+    """QH3: 2 resolved-in-last-7d + 1 unresolved -> queue_size=1, resolved_this_week=2."""
+    from fastapi.testclient import TestClient
+
+    pool = _FakePool(fetchval_queue=[1, 2])
+    app = _build_app(pool=pool)
+    client = TestClient(app)
+    resp = client.get("/admin/queue-health")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["queue_size"] == 1
+    assert body["resolved_this_week"] == 2
+
+
+def test_qh4_resolved_older_than_seven_days_excluded() -> None:
+    """QH4: 7-day window predicate verified via SQL string.
+
+    The route's resolved_this_week query MUST predicate on
+    ``resolved_at >= NOW() - INTERVAL '7 days'`` so rows older than 7 days
+    are excluded by Postgres semantics. Asserting the SQL substring is the
+    deterministic equivalent at this fake-pool layer; the live behavior is
+    covered by the live alembic + pgvector instance.
+    """
+    from fastapi.testclient import TestClient
+
+    pool = _FakePool(fetchval_queue=[0, 0])
+    app = _build_app(pool=pool)
+    client = TestClient(app)
+    resp = client.get("/admin/queue-health")
+    assert resp.status_code == 200, resp.text
+    acq = pool.last_acquire
+    assert acq is not None and acq.last_conn is not None
+    resolved_sql = acq.last_conn.fetchval_calls[1][0]
+    # Predicate excludes rows older than 7 days (Postgres semantics).
+    assert "NOW() - INTERVAL '7 days'" in resolved_sql or (
+        "NOW()" in resolved_sql and "7 days" in resolved_sql
+    )
+
+
+def test_qh5_queue_health_response_rejects_extra_fields_and_negatives() -> None:
+    """QH5: QueueHealthResponse extra='forbid' + Field(ge=0)."""
+    from pydantic import ValidationError
+
+    from tracer_ai.api.schemas import QueueHealthResponse
+
+    # Happy path.
+    ok = QueueHealthResponse(queue_size=0, resolved_this_week=0)
+    assert ok.queue_size == 0
+    assert ok.resolved_this_week == 0
+
+    # Reject extra field.
+    with pytest.raises(ValidationError):
+        QueueHealthResponse(
+            queue_size=1,
+            resolved_this_week=2,
+            extra="x",  # type: ignore[call-arg]
+        )
+
+    # Reject negative queue_size.
+    with pytest.raises(ValidationError):
+        QueueHealthResponse(queue_size=-1, resolved_this_week=0)
+
+    # Reject negative resolved_this_week.
+    with pytest.raises(ValidationError):
+        QueueHealthResponse(queue_size=0, resolved_this_week=-1)

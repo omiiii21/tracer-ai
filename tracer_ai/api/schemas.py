@@ -175,6 +175,67 @@ class CorpusState(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# /admin/eval-config  (GET)  — Phase 5 Plan 03 / D-5.13
+# ---------------------------------------------------------------------------
+
+
+class EvalConfigResponse(BaseModel):
+    """GET /admin/eval-config response body (D-5.13).
+
+    Single source of truth for the runtime bad-answer-queue threshold +
+    judge identity. The frontend reads this at mount of the bad-answer queue
+    page (Plan 05-07) so the queue's Judge-flagged tab uses the same value
+    the backend would filter on. Avoids drift between the calibrated value
+    (Settings env var) and a hard-coded UI default.
+
+    ``threshold`` is bounded [0.0, 1.0] at the response layer; the underlying
+    ``settings.bad_answer_faithfulness_threshold`` is also bounded by Pydantic
+    Settings (D-5.13).
+
+    ``calibration_date`` is the optional ISO timestamp of the last calibration
+    (D-5.14); when set, the dashboard renders a Tremor AreaChart annotation
+    marker on that date. v1 accepts BOTH tz-aware and naive datetimes (Open
+    Question 5 RESOLVED in Plan 05-01).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    threshold: Annotated[float, Field(ge=0.0, le=1.0)]
+    judge_prompt_version: str
+    judge_model: str
+    calibration_date: datetime | None = None
+
+
+# ---------------------------------------------------------------------------
+# /admin/queue-health  (GET)  — Phase 5 Plan 03 / FBCK-07
+# ---------------------------------------------------------------------------
+
+
+class QueueHealthResponse(BaseModel):
+    """GET /admin/queue-health response body (FBCK-07; Phase 5 fix).
+
+    Powers the dashboard's 5th KpiCard "Queue Health" with two live numbers:
+
+    - ``queue_size``: count of unresolved thumbs-down feedback rows. Uses
+      Plan 05-02's partial index ``feedback_unresolved_idx (trace_id) WHERE
+      resolved_at IS NULL``.
+    - ``resolved_this_week``: count of feedback rows resolved in the last
+      7 days (``resolved_at >= NOW() - INTERVAL '7 days'``).
+
+    Replaces the prior "static 0 placeholder" gap so the dashboard's 5th
+    KpiCard renders LIVE numbers (Plan 05-07 Task 3 wires the frontend).
+
+    Single-user local; no auth scoping in v1 (T-05-03-04 / T-05-03-06 accept).
+    Polled by frontend every 30s with TanStack Query refetchInterval.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    queue_size: Annotated[int, Field(ge=0)]
+    resolved_this_week: Annotated[int, Field(ge=0)]
+
+
+# ---------------------------------------------------------------------------
 # /admin/ingest  (POST + GET)
 # ---------------------------------------------------------------------------
 

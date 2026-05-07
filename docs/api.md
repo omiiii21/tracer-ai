@@ -500,6 +500,90 @@ class ChunkingConfigResponse(BaseModel):
 | 400    | `INVALID_REQUEST` | malformed body (e.g., non-integer values) |
 | 422    | `UNPROCESSABLE_ENTITY` | `chunk_size` outside [100, 4000] or `overlap` outside [0, 500]; `overlap >= chunk_size` (semantic check enforced in route) |
 
+## GET /admin/eval-config
+
+Single source of truth for the runtime bad-answer-queue threshold + judge identity. The frontend (Plan 05-07 Bad-Answer Queue page) reads this at mount so the queue's Judge-flagged tab uses the same value the backend would filter on. Avoids drift between the calibrated env-var value and a hard-coded UI default. See [ADR 008](./decisions/008-judge-prompts-thresholds.md) and Phase 5 D-5.13.
+
+**No request body.**
+
+**Response schema:**
+
+```python
+class EvalConfigResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    threshold: Annotated[float, Field(ge=0.0, le=1.0)]
+    judge_prompt_version: str
+    judge_model: str                       # e.g., "claude-haiku-4-5-20251001"
+    calibration_date: datetime | None = None
+```
+
+**Example response body:**
+
+```json
+{
+  "threshold": 0.6,
+  "judge_prompt_version": "v1.ragas-faithfulness-relevance",
+  "judge_model": "claude-haiku-4-5-20251001",
+  "calibration_date": null
+}
+```
+
+**Field semantics:**
+
+| Field | Source | Notes |
+|-------|--------|-------|
+| `threshold` | `Settings.bad_answer_faithfulness_threshold` (env: `BAD_ANSWER_FAITHFULNESS_THRESHOLD`) | Faithfulness scores below this flag a trace for the bad-answer queue. Calibrated against ~30 hand-labeled traces in EVAL-06. |
+| `judge_prompt_version` | `tracer_ai.eval.llm_judge.PROMPT_VERSION` (module constant) | Bumped manually when the prompt body changes (e.g., `v2.calibrated-2026-05`). Audit trail per D-5.04. |
+| `judge_model` | `Settings.llm_judge_model` (env: `LLM_JUDGE_MODEL`) | Dated snapshot, never an alias (Pitfall #4 mitigation). |
+| `calibration_date` | `Settings.calibration_date` (env: `CALIBRATION_DATE`) | When set, dashboard renders a Tremor `AreaChart` annotation marker on this date documenting the calibration discontinuity (D-5.14). |
+
+**Error responses:**
+
+| Status | error_code | When |
+|--------|------------|------|
+| 500    | `INTERNAL_ERROR` | `tracer_ai.eval.llm_judge` fails to import (e.g., missing required env at module load); the endpoint uses a lazy local import so other `/admin/*` routes still mount. |
+
+**Operational notes:** read-only; no DB access; pure `settings` + module-constant read. Sub-millisecond CPU cost; safe to poll. Single-user local v1 has no auth gate (T-05-03-01 / T-05-03-04 accepted in v1; multi-tenant v2 requires JWT subject scoping under `prefix="/admin"` per V2-AUTH-02).
+
+## GET /admin/queue-health
+
+Live counts powering the dashboard's 5th `KpiCard` "Queue Health" (FBCK-07). Replaces the prior static `0` placeholder so the dashboard renders LIVE numbers. Polled by frontend every 30s (TanStack Query `refetchInterval: 30_000`).
+
+**No request body.**
+
+**Response schema:**
+
+```python
+class QueueHealthResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    queue_size: Annotated[int, Field(ge=0)]
+    resolved_this_week: Annotated[int, Field(ge=0)]
+```
+
+**Example response body:**
+
+```json
+{
+  "queue_size": 3,
+  "resolved_this_week": 2
+}
+```
+
+**Field semantics:**
+
+| Field | Query | Notes |
+|-------|-------|-------|
+| `queue_size` | `SELECT COUNT(*) FROM feedback WHERE rating = -1 AND resolved_at IS NULL` | Uses Plan 05-02's partial index `feedback_unresolved_idx (trace_id) WHERE resolved_at IS NULL` for an O(log N) count of unresolved thumbs-down feedback. |
+| `resolved_this_week` | `SELECT COUNT(*) FROM feedback WHERE resolved_at >= NOW() - INTERVAL '7 days'` | Rolling 7-day window of resolved feedback rows; counts include rows resolved by `PATCH /feedback/{trace_id}/resolved`. |
+
+**Error responses:**
+
+| Status | error_code | When |
+|--------|------------|------|
+| 503    | `UPSTREAM_UNAVAILABLE` | Postgres unavailable (asyncpg pool acquire timeout) |
+
+**Operational notes:** read-only; two indexed COUNT queries; the partial index supports the dominant query pattern (queue_size). The `resolved_this_week` query falls back to a sequential scan over recent rows, acceptable for the dashboard polling cadence. Single-user local v1 has no auth gate (T-05-03-04 / T-05-03-06 accepted in v1).
+
 ## Cross-References
 
 - [Architecture](./architecture.md)

@@ -55,11 +55,13 @@ from tracer_ai.api.schemas import (
     ChunkingConfig,
     ChunkingConfigPatch,
     CorpusState,
+    EvalConfigResponse,
     IngestRequest,
     IngestResponse,
     IngestSourceRequest,
     IngestStatus,
     IngestUrlsRequest,
+    QueueHealthResponse,
 )
 from tracer_ai.config import settings
 from tracer_ai.corpus.ingest import run_ingest
@@ -313,3 +315,70 @@ async def patch_chunking_config(body: ChunkingConfigPatch) -> ChunkingConfig:
         overlap=body.overlap,
     )
     return ChunkingConfig(chunk_size=body.chunk_size, overlap=body.overlap)
+
+
+# --- GET /admin/eval-config (Phase 5 Plan 03 / D-5.13) ----------------------
+
+
+@router.get("/eval-config", response_model=EvalConfigResponse)
+async def get_eval_config() -> EvalConfigResponse:
+    """Return the runtime eval threshold + judge model + prompt version (D-5.13).
+
+    Single source of truth for the bad-answer-queue threshold; the frontend
+    (Plan 05-07) reads this at mount so the UI filter and the operator-set
+    env var stay aligned. Read-only; no DB access; pure ``settings`` +
+    module-constant read.
+
+    The ``PROMPT_VERSION`` import is LOCAL inside the handler body so this
+    route does not force ``tracer_ai.eval.llm_judge`` to be import-clean at
+    ``admin.py`` load time. If ``eval/`` import fails (e.g., missing
+    ANTHROPIC_API_KEY in dev), the rest of ``/admin/*`` still mounts. Pattern
+    documented in PATTERNS.md `tracer_ai/api/admin.py` analog.
+    """
+    # Local imports keep eval/ optional at admin.py load time.
+    from tracer_ai.eval.llm_judge import PROMPT_VERSION
+
+    return EvalConfigResponse(
+        threshold=settings.bad_answer_faithfulness_threshold,
+        judge_prompt_version=PROMPT_VERSION,
+        judge_model=settings.llm_judge_model,
+        calibration_date=settings.calibration_date,
+    )
+
+
+# --- GET /admin/queue-health (Phase 5 Plan 03 / FBCK-07) --------------------
+
+
+@router.get("/queue-health", response_model=QueueHealthResponse)
+async def get_queue_health(request: Request) -> QueueHealthResponse:
+    """Return live counts for the dashboard 5th KpiCard (FBCK-07).
+
+    ``queue_size``: unresolved thumbs-down feedback rows. Uses Plan 05-02's
+    partial index ``feedback_unresolved_idx ON feedback (trace_id) WHERE
+    resolved_at IS NULL`` for an O(log N) count.
+
+    ``resolved_this_week``: feedback rows resolved in the last 7 days
+    (``resolved_at >= NOW() - INTERVAL '7 days'``). The natural fallback to a
+    sequential scan is acceptable for the dominant query pattern (operator
+    KPI poll, frontend caches with staleTime: 30_000).
+
+    Single-user local; no auth in v1 (T-05-03-04 / T-05-03-06 accept).
+    Pure read-only against the feedback table.
+    """
+    pool: asyncpg.Pool = request.app.state.db_pool
+    async with pool.acquire(timeout=2.0) as conn:
+        queue_size = await conn.fetchval(
+            "SELECT COUNT(*) FROM feedback " "WHERE rating = -1 AND resolved_at IS NULL"
+        )
+        resolved_this_week = await conn.fetchval(
+            "SELECT COUNT(*) FROM feedback " "WHERE resolved_at >= NOW() - INTERVAL '7 days'"
+        )
+    log.info(
+        "queue_health_reported",
+        queue_size=int(queue_size or 0),
+        resolved_this_week=int(resolved_this_week or 0),
+    )
+    return QueueHealthResponse(
+        queue_size=int(queue_size or 0),
+        resolved_this_week=int(resolved_this_week or 0),
+    )
