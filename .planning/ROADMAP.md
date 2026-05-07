@@ -121,7 +121,20 @@ Plans:
   3. Time-series charts on the dashboard populate as queries are made — latency p50/p95, cost over time, faithfulness mean, and manual feedback ratio are all visible
   4. The bad-answer queue has a "mark resolved" action and a dashboard widget showing queue size and items resolved this week
   5. A judge failure (timeout, rate limit, or exception) never causes a user-facing chat request to fail
-**Plans**: TBD
+**Plans:** 7 plans
+
+**Wave 1** *(parallel; foundations)*
+- [ ] 05-01-PLAN.md — Eval foundation: tracer_ai/tracer/context.py hand-rolled contextvar helpers (D-5.06; closes TRCR-04) + tracer_ai/eval/{protocols,prompts,llm_judge}.py (Anthropic Haiku judge + tool_use forced + XML-delimited prompts + injection-escape + MockJudge + PROMPT_VERSION) + tracer_ai/config.py 4 new Settings fields (D-5.13/D-5.09/D-5.05/D-5.14) + ERROR_TYPE / RAG_EVAL_JUDGE_LATENCY_MS constants. EVAL-01 + EVAL-03.
+- [ ] 05-02-PLAN.md — alembic 0003_feedback_resolved.py (FBCK-04 / D-5.15) + PATCH /feedback/{trace_id}/resolved route + FeedbackResolveResponse schema; idempotent UPDATE; partial index for bad-answer queue exclusion. FBCK-01 + FBCK-02 + FBCK-04 + FBCK-06.
+- [ ] 05-03-PLAN.md — GET /admin/eval-config endpoint + EvalConfigResponse schema (D-5.13); single source of truth for runtime threshold + judge identity; lazy-import PROMPT_VERSION pattern. EVAL-06.
+
+**Wave 2** *(parallel; depends on Wave 1 contracts)*
+- [ ] 05-04-PLAN.md — EvalDispatcher (D-5.07/08/10) + Pipeline ctx_snapshot capture before _emit_root (Pitfall 1) + ChatFinalEvent extension (private excluded fields) + chat.py SSE generator dispatch + lifespan integration (drain order: dispatcher -> consumer -> pool close). Closes TRCR-04 deferral. EVAL-02 + EVAL-04 + EVAL-05.
+- [ ] 05-05-PLAN.md — GET /traces/timeseries with adaptive bucketing (D-5.17; 1h/24h/7d/30d) + extend GET /traces with max_faithfulness + sort_by=faithfulness_asc (FBCK-03/06 backend) + PostgresTraceStore.timeseries() with generate_series + percentile_cont; LEFT JOIN preserves empty-bucket NULL rows for connectNulls=false. DASH-01..06 + FBCK-03 + FBCK-06.
+- [ ] 05-06-PLAN.md — tracer-ai calibrate {label, threshold} CLI (D-5.11/12; argparse not Click per Pitfall 10) + best-F1 sweep over [0.3, 0.9] step 0.05 + Pitfall 6 prompt-version mismatch refusal + docs/eval/calibration_set.yaml schema + pyyaml runtime dep; print allowlist preserved (render_sweep_report returns string; CLI prints). EVAL-06.
+
+**Wave 3** *(frontend; depends on Wave 2 endpoints)*
+- [ ] 05-07-PLAN.md — Frontend: NEW /dashboard/queue page (Tabs User-flagged / Judge-flagged + Mark Resolved + Promote-stub) + Dashboard QualityCharts (4 Tremor time-series; connectNulls=false) + 5th KpiCard Queue Health (D-5.16) + TraceDetail diagnosis-tag Select (FBCK-05) + AppShell Queue nav link + extended ky api/traces.ts (getTimeseries, getEvalConfig, markResolved). FBCK-02/03/05/06/07 + DASH-01..06.
 **UI hint**: yes
 
 ### Phase 6: Eval CLI + Regression Set
@@ -158,6 +171,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 2. Skeleton & Infrastructure | 6/6 | Complete    | 2026-05-04 |
 | 3. RAG Pipeline + Chat UI + Corpus Admin | 9/9 | Complete (with 1 carried gap) | 2026-05-05 |
 | 4. Tracer + Trace Explorer | 6/6 | Complete    | 2026-05-06 |
-| 5. Quality Layer + Feedback | 0/TBD | Not started | - |
+| 5. Quality Layer + Feedback | 0/7 | Not started | - |
 | 6. Eval CLI + Regression Set | 0/TBD | Not started | - |
 | 7. Polish + Demo Path | 0/TBD | Not started | - |
