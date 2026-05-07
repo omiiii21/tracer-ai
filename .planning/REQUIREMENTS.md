@@ -97,7 +97,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **FBCK-04**: "Mark resolved" action on bad-answer queue items
 - [ ] **FBCK-05**: Optional human-editable diagnosis tag on trace detail with values `{Retrieval, Prompt, Corpus, LLM}` (research-identified differentiator)
 - [ ] **FBCK-06**: Bad-answer queue sorted by score (lowest faithfulness first); items auto-close on subsequent re-pass
-- [ ] **FBCK-07**: Dashboard widget: queue size + items resolved this week
+- [x] **FBCK-07**: Dashboard widget: queue size + items resolved this week
 
 ### Dashboard Metrics (Phase 5)
 
@@ -232,7 +232,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FBCK-04 | Phase 5 | Complete |
 | FBCK-05 | Phase 5 | Pending |
 | FBCK-06 | Phase 5 | Pending |
-| FBCK-07 | Phase 5 | Pending |
+| FBCK-07 | Phase 5 Plan 03 | Complete |
 | DASH-01 | Phase 5 | Pending |
 | DASH-02 | Phase 5 | Pending |
 | DASH-03 | Phase 5 | Pending |

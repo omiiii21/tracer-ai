@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Plan 05-02 complete (FBCK-04 Mark Resolved persistence + PATCH /feedback/{trace_id}/resolved); Plan 05-03 next
-last_updated: "2026-05-07T18:09:55.159Z"
-last_activity: 2026-05-07
+stopped_at: Plan 05-03 complete (GET /admin/eval-config + GET /admin/queue-health; D-5.13 + FBCK-07 fix); Plan 05-04 next
+last_updated: "2026-05-08T18:48:46Z"
+last_activity: 2026-05-08
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 36
-  completed_plans: 31
-  percent: 86
+  completed_plans: 32
+  percent: 89
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 ## Current Position
 
 Phase: 05 (quality-feedback) — EXECUTING
-Plan: 3 of 7
+Plan: 4 of 7
 Status: Ready to execute
-Last activity: 2026-05-07
+Last activity: 2026-05-08
 
-Progress: [█████████░] 86%
+Progress: [█████████░] 89%
 
 ## Performance Metrics
 
@@ -57,6 +57,7 @@ Progress: [█████████░] 86%
 *Updated after each plan completion*
 | Phase 05 P01 | 30m | 3 tasks | 13 files |
 | Phase 05 P02 | 30m | - tasks | - files |
+| Phase 05 P03 | 36m | 1 task  | 4 files  |
 
 ## Accumulated Context
 
@@ -141,6 +142,10 @@ Recent decisions affecting current work:
 - [Phase ?]: Plan 05-01 pattern: test files with module-top 'from tracer_ai.eval...' imports must os.environ.setdefault DATABASE_URL/ANTHROPIC_API_KEY/VOYAGE_API_KEY BEFORE the import (pytest autouse fixtures run only AFTER collection-time imports). Alt: deferred-imports-inside-test (test_llm_adapter.py pattern, used by test_llm_judge.py).
 - [Phase ?]: Plan 05-02: FBCK-04 Mark Resolved persistence shipped — alembic 0003 adds nullable resolved_at TIMESTAMPTZ + partial index feedback_unresolved_idx (trace_id) WHERE resolved_at IS NULL (supports queue exclusion + FBCK-07 KPI). PATCH /feedback/{trace_id}/resolved idempotent (rows_updated=0 on re-PATCH; never 404; Pitfall 8 — multiple feedback rows for one trace_id all resolve). FeedbackResolveResponse extra='forbid' schema. 9 net new tests + 251/251+1s full suite green. Commits d749993 + 5ed1b2d.
 - [Phase ?]: Plan 05-02 pattern: integration tests for new asyncpg-using routes use the FakePool/recorder shape (consistent with tests/integration/test_traces_api.py + test_pipeline_with_postgres_writer.py); the project's DB-end-to-end gate is tests/integration/test_alembic_reversibility.py which runs the live docker-compose alembic upgrade->downgrade->upgrade drill. Plans 05-03/05-04 should reuse this pattern (no real-asyncpg fixture needed).
+- [Phase 5]: Plan 05-03: D-5.13 + FBCK-07 fix shipped — GET /admin/eval-config returns {threshold, judge_prompt_version, judge_model, calibration_date} from Settings + PROMPT_VERSION (single source of truth for the bad-answer-queue threshold; lazy import inside handler so eval/ stays optional at admin.py load time). GET /admin/queue-health returns {queue_size, resolved_this_week} powering the dashboard 5th KpiCard with LIVE numbers (replaces the prior static "0" placeholder gap). queue_size uses Plan 05-02's feedback_unresolved_idx partial index; resolved_this_week is a 7-day rolling count. EvalConfigResponse + QueueHealthResponse Pydantic v2 strict-mode schemas with extra='forbid'. 10 net new tests EA1-EA5 + QH1-QH5; 19/19 admin tests pass; 256/256+1s full unit suite green. Commit ab5e9dc.
+- [Phase 5]: Plan 05-03 pattern: Lazy-import-inside-handler for cross-module references that violate strict wave-parallelism (`from tracer_ai.eval.llm_judge import PROMPT_VERSION` placed inside `get_eval_config` body, NOT at admin.py module-top). Documented inline with rationale ('local import keeps eval/ optional at admin.py load time') so future maintainers do not 'helpfully' move it to module-top.
+- [Phase 5]: Plan 05-03 pattern: When monkeypatching Settings inside admin route tests, target the LIVE admin module's settings attribute (admin.settings.field_name = ...). Patching tracer_ai.config.settings directly creates a new instance that the cached `tracer_ai.api.admin` package attribute never sees because `from tracer_ai.api import admin` resolves via the cached `tracer_ai.api` package (still in sys.modules), returning the OLD admin module from a prior test. Pattern documented in EA2/EA3 docstrings.
+- [Phase 5]: Plan 05-03 pattern: _FakeConn.fetchval(query) recorder shape — store (query, args) tuples then pop canned returns from a per-instance FIFO queue. Reusable by Plan 05-04 dispatcher tests (which need conn.fetchval for the UPDATE traces SET faithfulness step) and any future plan with sequential conn.fetchval calls. _FakePool/_FakeAcquireCtx thread fetchval_queue through.
 
 ### Pending Todos
 
@@ -163,6 +168,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-07T18:09:55.148Z
-Stopped at: Plan 05-02 complete (FBCK-04 Mark Resolved persistence + PATCH /feedback/{trace_id}/resolved); Plan 05-03 next
+Last session: 2026-05-08T18:48:46Z
+Stopped at: Plan 05-03 complete (GET /admin/eval-config + GET /admin/queue-health; D-5.13 + FBCK-07 fix); Plan 05-04 next
 Resume file: None
