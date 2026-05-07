@@ -35,5 +35,11 @@ RAG_EVAL_JUDGE_MODEL: str = "rag.eval.judge_model"
 RAG_EVAL_JUDGE_PROMPT_VERSION: str = "rag.eval.judge_prompt_version"
 RAG_EVAL_JUDGE_COST_USD: str = "rag.eval.judge_cost_usd"
 
+# Phase 5 D-5.07: failure-span error type marker (mirrors OTel error.type semantics).
+ERROR_TYPE: str = "error.type"
+
+# Phase 5 EVAL-04: rag.eval judge_latency_ms attribute.
+RAG_EVAL_JUDGE_LATENCY_MS: str = "rag.eval.judge_latency_ms"
+
 # feedback namespace
 FEEDBACK_DIAGNOSIS_TAG: str = "feedback.diagnosis_tag"

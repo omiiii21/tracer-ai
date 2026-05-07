@@ -22,6 +22,7 @@ forbid policy on extras -- unknown env vars are a Tampering bug class and
 must be rejected at validation time, not silently dropped.
 """
 
+from datetime import datetime
 from typing import Literal
 
 from pydantic import Field, PostgresDsn, SecretStr
@@ -60,6 +61,44 @@ class Settings(BaseSettings):
         default="claude-haiku-4-5-20251001",
         validation_alias="LLM_JUDGE_MODEL",
         description="Anthropic dated snapshot for the judge (Phase 5+)",
+    )
+
+    # === Eval / Quality Layer (Phase 5; D-5.13 / D-5.09 / D-5.05 / D-5.14) ===
+    bad_answer_faithfulness_threshold: float = Field(
+        default=0.6,
+        ge=0.0,
+        le=1.0,
+        validation_alias="BAD_ANSWER_FAITHFULNESS_THRESHOLD",
+        description=(
+            "Threshold below which faithfulness flags a trace for the bad-answer "
+            "queue (D-5.13). Calibrated against ~30 hand-labeled traces in EVAL-06."
+        ),
+    )
+    judge_concurrency: int = Field(
+        default=4,
+        ge=1,
+        le=32,
+        validation_alias="JUDGE_CONCURRENCY",
+        description="Max in-flight judge calls (asyncio.Semaphore bound; D-5.09)",
+    )
+    judge_timeout_seconds: float = Field(
+        default=10.0,
+        gt=0.0,
+        le=60.0,
+        validation_alias="JUDGE_TIMEOUT_SECONDS",
+        description=(
+            "Per-call AsyncAnthropic judge timeout (D-5.05); total wall budget "
+            "= timeout * 2 + retry-sleep ~= 21s, fitting EVAL-05 30s envelope."
+        ),
+    )
+    calibration_date: datetime | None = Field(
+        default=None,
+        validation_alias="CALIBRATION_DATE",
+        description=(
+            "ISO timestamp of last calibration; renders Tremor AreaChart annotation "
+            "(D-5.14). v1: accepts BOTH tz-aware and naive (Open Question 5 RESOLVED "
+            "-- no enforcement; Pydantic v2 datetime accepts naive)."
+        ),
     )
     embedding_model: str = Field(
         default="voyage-code-3",

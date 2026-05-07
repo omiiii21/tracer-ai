@@ -37,6 +37,11 @@ def clean_env(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
         "PRICING_CLAUDE_HAIKU_OUTPUT_PER_MTOK",
         "CHUNKING_DEFAULT_SIZE",
         "CHUNKING_DEFAULT_OVERLAP",
+        # Phase 5 Plan 01 (D-5.13 / D-5.09 / D-5.05 / D-5.14)
+        "BAD_ANSWER_FAITHFULNESS_THRESHOLD",
+        "JUDGE_CONCURRENCY",
+        "JUDGE_TIMEOUT_SECONDS",
+        "CALIBRATION_DATE",
     ):
         monkeypatch.delenv(key, raising=False)
     # Evict the cached module so the next import re-runs `settings = Settings()`
