@@ -4,14 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 4 complete (EXIT granted); Phase 5 (Quality Layer + Feedback) next
-last_updated: "2026-05-07T08:24:03.696Z"
-last_activity: 2026-05-07 -- Phase 05 planning complete
+last_updated: "2026-05-07T17:54:47.851Z"
+last_activity: 2026-05-07
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 36
-  completed_plans: 29
-  percent: 81
+  completed_plans: 30
+  percent: 83
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-04)
 
 **Core value:** When a RAG bot misanswers, the operator can open the trace and see exactly which stage failed — retriever returned wrong chunks, LLM ignored the right chunks, corpus was stale, prompt template degraded. Per-step traces with semantic quality metrics turn debugging from guesswork into diagnosis.
-**Current focus:** Phase 04 — tracer-trace-explorer
+**Current focus:** Phase 05 — quality-feedback
 
 ## Current Position
 
-Phase: 5
-Plan: Not started
+Phase: 05 (quality-feedback) — EXECUTING
+Plan: 2 of 7
 Status: Ready to execute
-Last activity: 2026-05-07 -- Phase 05 planning complete
+Last activity: 2026-05-07
 
-Progress: [██████████████] 100% of milestone (planned plans); 4/7 phases complete; 6/6 Phase-4 plans complete
+Progress: [████████░░] 83%
 
 ## Performance Metrics
 
@@ -55,6 +55,7 @@ Progress: [██████████████] 100% of milestone (planne
 - Trend: Plan 01-08 was a single-task verification gate plan; pre-flight passed cleanly (14/14 canonical /docs/ artifacts present); the in-process sub-agent check produced 5 PASS answers against the locked criteria with 13/13 cited paths under /docs/ — zero outside-scope cites. One Rule 3 deviation (executor lacked Task spawn tool) transparently disclosed as a Sub-Agent Provenance Note rather than fabricating a transcript (Threat T-01-08-05 / Spoofing mitigated by honest disclosure + identical /docs/-only scope discipline). All 12 automated verify-block assertions green: file exists, h1, ## Q1..Q5 (count=5), Status: PASS count=6 ≥5, ## Overall heading, Sub-agent type: ... Explore present, "/docs/ only" present, Cited files: present, zero Status: FAIL. Phase 1 EXIT achieved; Phase 2 entry unblocked.
 
 *Updated after each plan completion*
+| Phase 05 P01 | 30m | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -133,6 +134,10 @@ Recent decisions affecting current work:
 - Plan 04-06: Rule 1 fix in `tracer_ai/rag/pipeline.py` — rag.prompt_assemble payload now stores `[m.model_dump(mode="json") for m in messages]` instead of raw Pydantic Message objects. Without this fix the PostgresTraceWriter consumer's `json.dumps(s.payload)` raises `TypeError: Object of type Message is not JSON serializable` and the spans+payloads batch never lands. Bug surfaced by Task 2 integration test; fix lands atomically with the test that exposed it (commit f17ac01). Pre-existing bug from Plan 04-01 that unit tests with FakePool recorders did not catch (recorders don't call json.dumps).
 - Plan 04-06: TRCR-04 explicitly DEFERRED to Phase 5 EVAL-04 with rationale recorded in 04-VERIFICATION.md TRCR-04 Deferral section. Phase 4 sync 4-span emission passes parent_span_id explicitly via uuid4(); the cross-task context-snapshot pattern is needed for the BackgroundTasks async eval branch (per docs/sequence-diagrams.md Note callout). Phase 4 stays free of any opentelemetry-* runtime dep (ADR 005 compliance preserved).
 - Plan 04-06: Phase 4 EXIT GRANTED — all 4 ROADMAP Phase 4 success criteria PASS (cited evidence in 04-VERIFICATION.md); 13/14 requirements PASS; TRCR-04 DEFERRED. Phase 5 entry unblocked.
+- [Phase ?]: Plan 05-01: Phase 5 eval-foundation shipped
+- [Phase ?]: Plan 05-01: Phase 5 eval-foundation shipped. Judge Protocol + AnthropicJudge (D-5.02 forced tool_use) + EvalScores with judge_cost_usd (EVAL-04 cost fix; cost from settings.pricing_claude_haiku_*) + MockJudge + PROMPT_VERSION='v1.ragas-faithfulness-relevance' (D-5.04) + SUBMIT_EVAL_TOOL ToolParam + module-level _judge_semaphore singleton (D-5.09) all importable from tracer_ai.eval. Hand-rolled contextvar helpers close TRCR-04 with zero opentelemetry-* runtime deps (D-5.06 / ADR 005 invariant preserved). 4 new Settings fields with bounded Field validators (D-5.13/D-5.09/D-5.05/D-5.14). Open Question 5 RESOLVED: calibration_date accepts both naive AND tz-aware. _escape_brackets entity-encodes < > & to defeat closing-tag injection (Pitfall #3 / EVAL-03; Test PromptD asserts exact-N closing-tag count). 26 net new unit tests across 4 test files; 228/228 unit suite green. (.planning/phases/05-quality-feedback/05-01-SUMMARY.md.)
+- [Phase ?]: Plan 05-01 pattern: anthropic.RateLimitError test construction REQUIRES real httpx.Response with attached httpx.Request because the SDK super().__init__ accesses response.request. SimpleNamespace fails AttributeError. APITimeoutError + APIConnectionError accept SimpleNamespace(url=) because their __init__ never reads .request. Future Phase 5 dispatcher failure-span tests reuse verbatim.
+- [Phase ?]: Plan 05-01 pattern: test files with module-top 'from tracer_ai.eval...' imports must os.environ.setdefault DATABASE_URL/ANTHROPIC_API_KEY/VOYAGE_API_KEY BEFORE the import (pytest autouse fixtures run only AFTER collection-time imports). Alt: deferred-imports-inside-test (test_llm_adapter.py pattern, used by test_llm_judge.py).
 
 ### Pending Todos
 
@@ -155,6 +160,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-06T17:53:57.000Z
+Last session: 2026-05-07T17:54:47.837Z
 Stopped at: Phase 4 complete (EXIT granted); Phase 5 (Quality Layer + Feedback) next
-Resume file: .planning/phases/05-quality-feedback/05-CONTEXT.md (when Phase 5 begins)
+Resume file: None

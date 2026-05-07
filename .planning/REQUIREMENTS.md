@@ -82,9 +82,9 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Eval / Quality Layer (Phase 5)
 
-- [ ] **EVAL-01**: LLM-as-judge worker scores `faithfulness` and `relevance` for every trace; uses date-pinned `claude-haiku-*` snapshot
+- [x] **EVAL-01**: LLM-as-judge worker scores `faithfulness` and `relevance` for every trace; uses date-pinned `claude-haiku-*` snapshot
 - [ ] **EVAL-02**: Judge runs async via FastAPI `BackgroundTasks` after response flush; eval failure must NEVER fail user request
-- [ ] **EVAL-03**: Judge prompt wraps untrusted content in XML delimiters (`<retrieved_chunk>`, `<assistant_answer>`); system instruction declares them as inert data
+- [x] **EVAL-03**: Judge prompt wraps untrusted content in XML delimiters (`<retrieved_chunk>`, `<assistant_answer>`); system instruction declares them as inert data
 - [ ] **EVAL-04**: `rag.eval` span emitted as child of `rag.request` (context snapshot/re-attach pattern); records `judge_model`, `judge_prompt_version`, `judge_cost_usd`
 - [ ] **EVAL-05**: Faithfulness score appears on trace within ~30s of request
 - [ ] **EVAL-06**: Calibration step: hand-label ~30 traces (good and bad) and tune the bad-answer threshold against them; document in ADR
@@ -220,9 +220,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | EXPL-02 | Phase 4 Plan 04 | Complete |
 | EXPL-03 | Phase 4 Plan 05 | Complete |
 | EXPL-04 | Phase 4 Plan 05 | Complete |
-| EVAL-01 | Phase 5 | Pending |
+| EVAL-01 | Phase 5 | Complete |
 | EVAL-02 | Phase 5 | Pending |
-| EVAL-03 | Phase 5 | Pending |
+| EVAL-03 | Phase 5 | Complete |
 | EVAL-04 | Phase 5 | Pending |
 | EVAL-05 | Phase 5 | Pending |
 | EVAL-06 | Phase 5 | Pending |
