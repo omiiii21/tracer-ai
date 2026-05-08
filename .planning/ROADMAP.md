@@ -121,7 +121,7 @@ Plans:
   3. Time-series charts on the dashboard populate as queries are made — latency p50/p95, cost over time, faithfulness mean, and manual feedback ratio are all visible
   4. The bad-answer queue has a "mark resolved" action and a dashboard widget showing queue size and items resolved this week
   5. A judge failure (timeout, rate limit, or exception) never causes a user-facing chat request to fail
-**Plans:** 3/7 plans executed
+**Plans:** 7/7 plans executed
 
 **Wave 1** *(parallel; foundations)*
 - [x] 05-01-PLAN.md — Eval foundation: tracer_ai/tracer/context.py hand-rolled contextvar helpers (D-5.06; closes TRCR-04) + tracer_ai/eval/{protocols,prompts,llm_judge}.py (Anthropic Haiku judge + tool_use forced + XML-delimited prompts + injection-escape + MockJudge + PROMPT_VERSION) + tracer_ai/config.py 4 new Settings fields (D-5.13/D-5.09/D-5.05/D-5.14) + ERROR_TYPE / RAG_EVAL_JUDGE_LATENCY_MS constants. EVAL-01 + EVAL-03.
@@ -134,7 +134,7 @@ Plans:
 - [x] 05-06-PLAN.md — tracer-ai calibrate {label, threshold} CLI (D-5.11/12; argparse not Click per Pitfall 10) + best-F1 sweep over [0.3, 0.9] step 0.05 + Pitfall 6 prompt-version mismatch refusal + docs/eval/calibration_set.yaml schema + pyyaml runtime dep; print allowlist preserved (render_sweep_report returns string; CLI prints). EVAL-06.
 
 **Wave 3** *(frontend; depends on Wave 2 endpoints)*
-- [ ] 05-07-PLAN.md — Frontend: NEW /dashboard/queue page (Tabs User-flagged / Judge-flagged + Mark Resolved + Promote-stub) + Dashboard QualityCharts (4 Tremor time-series; connectNulls=false) + 5th KpiCard Queue Health (D-5.16) + TraceDetail diagnosis-tag Select (FBCK-05) + AppShell Queue nav link + extended ky api/traces.ts (getTimeseries, getEvalConfig, markResolved). FBCK-02/03/05/06/07 + DASH-01..06.
+- [x] 05-07-PLAN.md — Frontend: NEW /dashboard/queue page (Tabs User-flagged / Judge-flagged + Mark Resolved + Promote-stub) + Dashboard QualityCharts (4 Tremor time-series; connectNulls=false on every chart, D-5.07 LOAD-BEARING for faithfulness) + 5th KpiCard Queue Health wired to LIVE GET /admin/queue-health (FBCK-07 fix; cache-invalidated on Mark-Resolved via ['queue-health'] queryKey) + TraceDetail diagnosis-tag Select (FBCK-05; preserves current rating instead of forcing -1 — Rule 2 fix) + AppShell Queue nav link + Dashboard NavLink `end` prop (Rule 1 nav active-prefix fix) + extended ky api/traces.ts (getTimeseries, getEvalConfig, getQueueHealth, markResolved, postFeedback). FBCK-02/03/05/06/07 + DASH-01..06. — see 05-07-SUMMARY.md
 **UI hint**: yes
 
 ### Phase 6: Eval CLI + Regression Set

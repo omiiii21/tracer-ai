@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Plan 05-06 complete (tracer-ai calibrate {label,threshold} CLI; best-F1 sweep + Pitfall-6 mismatch refusal; EVAL-06); Plan 05-07 (frontend) next
-last_updated: "2026-05-08T08:00:00.000Z"
+stopped_at: Plan 05-07 complete (Phase 5 frontend — Queue page + QualityCharts + 5th KpiCard + diagnosis-tag Select; FBCK-02/03/05/06/07 + DASH-01..06); Phase 5 ready for verifier gate
+last_updated: "2026-05-08T08:30:00.000Z"
 last_activity: 2026-05-08
 progress:
   total_phases: 7
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 
 ## Current Position
 
-Phase: 05 (quality-feedback) — EXECUTING
-Plan: 7 of 7
-Status: Ready to execute
+Phase: 05 (quality-feedback) — VERIFICATION PENDING
+Plan: 7 of 7 (all plans complete)
+Status: Awaiting Phase 5 verifier gate
 Last activity: 2026-05-08
 
 Progress: [██████████] 100%
@@ -59,6 +59,7 @@ Progress: [██████████] 100%
 | Phase 05 P02 | 30m | - tasks | - files |
 | Phase 05 P03 | 36m | 1 task  | 4 files  |
 | Phase 05 P04 | 50m | 2 tasks | 11 files |
+| Phase 05 P07 | 18m | 3 tasks | 7 files  |
 
 ## Accumulated Context
 
@@ -158,6 +159,11 @@ Recent decisions affecting current work:
 - [Phase 5]: Plan 05-06 pattern: Argparse nested subparsers — top-level `command` subparser holds `ingest` and `calibrate`; `calibrate` builds its own `cal_command` subparser with `label` + `threshold`. `_dispatch_calibrate` helper extracts the routing from main(). Reusable for Phase 6 regression-set CLI (will likely add `regression {seed,run,report}` as a third nested subparser).
 - [Phase 5]: Plan 05-06 pattern: CI-friendly CLI smoke without DB — short-circuit BEFORE asyncio.run + asyncpg pool when input is trivially empty (--n 0 / --in <missing>). Lets CI exercise the full argparse + dispatch surface without needing a DATABASE_URL secret. Documented inline in _dispatch_calibrate so future maintainers don't 'helpfully' remove the guard.
 - [Phase 5]: Plan 05-06 pattern: Self-recovering ValueError for prompt-version mismatch — error message contains BOTH the stale version from YAML AND the current PROMPT_VERSION constant + the literal command 'Re-run `tracer-ai calibrate label --n 30`' so the operator can self-recover without spelunking the codebase or docs. Reusable any time a config artifact pinned to a code version goes stale (Phase 6 regression-set may need similar refusal when the eval set's PROMPT_VERSION drifts).
+- [Phase 5]: Plan 05-07: Phase 5 frontend surface ships — /dashboard/queue Tabs page (User-flagged feedback=down + Judge-flagged max_faithfulness=THRESHOLD&sort_by=faithfulness_asc; threshold from getEvalConfig with 0.6 fallback per D-5.13; Mark Resolved invalidates ['queue']+['dashboard-kpis']+['queue-health'] keys; Promote disabled stub for Phase 6 CLI-05) + Dashboard QualityCharts subcomponent (4 Tremor charts — Latency p50/p95 + Cost AreaChart + Faithfulness LineChart + Feedback down ratio LineChart; ALL connectNulls={false} per D-5.07, load-bearing on faithfulness for judge-error gap visibility) + 5th KpiCard "QUEUE HEALTH" wired LIVE to GET /admin/queue-health (refetchInterval 30_000 + staleTime 0; FBCK-07 fix replaces static placeholder; D-5.16) + TraceDetail DiagnosisTagPanel on Feedback tab (Retrieval/PromptAssembly/LLM/CorpusStale/Other + "— none —"; preserves current feedback rating instead of forcing -1 — Rule 2 data-integrity fix) + AppShell Queue NavLink between Dashboard and Admin + Dashboard NavLink `end` prop (Rule 1 active-prefix nav fix) + ky api/traces.ts extended (getTimeseries / getEvalConfig / getQueueHealth / markResolved / postFeedback). 3 atomic feat commits (ee111d3 + 31ad357 + 0b36d25); ~18min duration; 7 files (1 created + 6 modified); ~657 LOC added. tsc --noEmit + npm run build clean. dangerouslySetInnerHTML count = 0 (XSS invariant preserved); React 18 + Tailwind 3 pin gates intact. (See 05-07-SUMMARY.md.)
+- [Phase 5]: Plan 05-07 pattern: Cache-invalidation feedback loop — mutations in one page invalidate multiple queryKeys to keep sibling pages in sync. Mark-Resolved (Queue.tsx) invalidates ['queue', 'dashboard-kpis', 'queue-health']; DiagnosisTagPanel save (TraceDetail.tsx) invalidates ['trace', id, 'queue', 'queue-health']. Reusable for any cross-page operator-action propagation (Phase 6 Promote will need similar fanout to ['regression-set', 'queue']).
+- [Phase 5]: Plan 05-07 pattern: detail-only optional field on TraceDetailResponse (NOT TraceListItem) — diagnosis_tag is sourced from MAX(created_at) feedback row per trace_id; the list endpoint cannot cheaply surface it without a per-row LATERAL subquery, but the detail endpoint can. Frontend TS interface puts the field on TraceDetailResponse only; UI degrades gracefully to '— none —' until backend wires the LATERAL subquery (5-10 LOC follow-up).
+- [Phase 5]: Plan 05-07 pattern: queryKey-spreads-threshold for endpoint-driven filter values — when a TanStack queryKey depends on a value fetched from another endpoint (here, threshold from getEvalConfig), spread it into the dependent queryKey (['queue', 'judge', threshold]). When the upstream endpoint refetches and returns a different threshold, the dependent query auto-invalidates. D-4.18 extended.
+- [Phase 5]: Plan 05-07 pattern: rating-preservation in tag-update UX — when an operator-driven Select adds metadata to an existing record but doesn't intend to change a separate field, preserve that field instead of defaulting it. DiagnosisTagPanel sends `feedbackRating ?? -1` (preserve existing rating; default to -1 only when there was none). Pattern reusable for any UI that appends metadata to existing records.
 
 ### Pending Todos
 
@@ -180,6 +186,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-08T08:00:00Z
-Stopped at: Plan 05-06 complete (tracer-ai calibrate {label,threshold} CLI; EVAL-06); Plan 05-07 (frontend) is the last plan in Phase 5
+Last session: 2026-05-08T08:30:00Z
+Stopped at: Plan 05-07 complete (Phase 5 frontend — Queue + QualityCharts + 5th KpiCard + diagnosis-tag Select; FBCK-02/03/05/06/07 + DASH-01..06). Phase 5 plan execution complete (7/7); awaiting Phase 5 verifier gate before Phase 6 entry.
 Resume file: None
