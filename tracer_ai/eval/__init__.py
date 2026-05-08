@@ -1,5 +1,6 @@
 """Phase 5 eval module -- LLM-as-judge + (Wave 2) dispatcher + calibration."""
 
+from tracer_ai.eval.dispatcher import EvalDispatcher
 from tracer_ai.eval.llm_judge import (
     PROMPT_VERSION,
     SUBMIT_EVAL_TOOL,
@@ -13,6 +14,7 @@ __all__ = [
     "PROMPT_VERSION",
     "SUBMIT_EVAL_TOOL",
     "AnthropicJudge",
+    "EvalDispatcher",
     "EvalScores",
     "Judge",
     "MockJudge",
