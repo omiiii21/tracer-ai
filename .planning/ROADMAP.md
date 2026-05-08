@@ -129,7 +129,7 @@ Plans:
 - [x] 05-03-PLAN.md — GET /admin/eval-config endpoint + EvalConfigResponse schema (D-5.13) + GET /admin/queue-health + QueueHealthResponse (FBCK-07 fix; live queue_size + resolved_this_week for the 5th KpiCard); single source of truth for runtime threshold + judge identity; lazy-import PROMPT_VERSION pattern. EVAL-06 + FBCK-07.
 
 **Wave 2** *(parallel; depends on Wave 1 contracts)*
-- [ ] 05-04-PLAN.md — EvalDispatcher (D-5.07/08/10) + Pipeline ctx_snapshot capture before _emit_root (Pitfall 1) + ChatFinalEvent extension (private excluded fields) + chat.py SSE generator dispatch + lifespan integration (drain order: dispatcher -> consumer -> pool close). Closes TRCR-04 deferral. EVAL-02 + EVAL-04 + EVAL-05.
+- [x] 05-04-PLAN.md — EvalDispatcher (D-5.07/08/10) + Pipeline ctx_snapshot capture before _emit_root (Pitfall 1) + ChatFinalEvent extension (private excluded fields) + chat.py SSE generator dispatch + lifespan integration (drain order: dispatcher -> consumer -> pool close). Closes TRCR-04 deferral. EVAL-02 + EVAL-04 + EVAL-05. — see 05-04-SUMMARY.md
 - [ ] 05-05-PLAN.md — GET /traces/timeseries with adaptive bucketing (D-5.17; 1h/24h/7d/30d) + extend GET /traces with max_faithfulness + sort_by=faithfulness_asc (FBCK-03/06 backend) + PostgresTraceStore.timeseries() with generate_series + percentile_cont; LEFT JOIN preserves empty-bucket NULL rows for connectNulls=false. DASH-01..06 + FBCK-03 + FBCK-06.
 - [ ] 05-06-PLAN.md — tracer-ai calibrate {label, threshold} CLI (D-5.11/12; argparse not Click per Pitfall 10) + best-F1 sweep over [0.3, 0.9] step 0.05 + Pitfall 6 prompt-version mismatch refusal + docs/eval/calibration_set.yaml schema + pyyaml runtime dep; print allowlist preserved (render_sweep_report returns string; CLI prints). EVAL-06.
 
@@ -171,6 +171,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 2. Skeleton & Infrastructure | 6/6 | Complete    | 2026-05-04 |
 | 3. RAG Pipeline + Chat UI + Corpus Admin | 9/9 | Complete (with 1 carried gap) | 2026-05-05 |
 | 4. Tracer + Trace Explorer | 6/6 | Complete    | 2026-05-06 |
-| 5. Quality Layer + Feedback | 2/7 | In Progress|  |
+| 5. Quality Layer + Feedback | 4/7 | In Progress|  |
 | 6. Eval CLI + Regression Set | 0/TBD | Not started | - |
 | 7. Polish + Demo Path | 0/TBD | Not started | - |

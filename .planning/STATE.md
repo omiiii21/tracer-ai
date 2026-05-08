@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Plan 05-03 complete (GET /admin/eval-config + GET /admin/queue-health; D-5.13 + FBCK-07 fix); Plan 05-04 next
-last_updated: "2026-05-08T18:48:46Z"
+stopped_at: Plan 05-04 complete (EvalDispatcher + cross-task ctx propagation; closes TRCR-04 deferral; EVAL-02/04/05); Plan 05-05 next
+last_updated: "2026-05-08T20:00:00Z"
 last_activity: 2026-05-08
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 36
-  completed_plans: 32
-  percent: 89
+  completed_plans: 33
+  percent: 92
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 ## Current Position
 
 Phase: 05 (quality-feedback) — EXECUTING
-Plan: 4 of 7
+Plan: 5 of 7
 Status: Ready to execute
 Last activity: 2026-05-08
 
-Progress: [█████████░] 89%
+Progress: [█████████░] 92%
 
 ## Performance Metrics
 
@@ -58,6 +58,7 @@ Progress: [█████████░] 89%
 | Phase 05 P01 | 30m | 3 tasks | 13 files |
 | Phase 05 P02 | 30m | - tasks | - files |
 | Phase 05 P03 | 36m | 1 task  | 4 files  |
+| Phase 05 P04 | 50m | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -146,6 +147,10 @@ Recent decisions affecting current work:
 - [Phase 5]: Plan 05-03 pattern: Lazy-import-inside-handler for cross-module references that violate strict wave-parallelism (`from tracer_ai.eval.llm_judge import PROMPT_VERSION` placed inside `get_eval_config` body, NOT at admin.py module-top). Documented inline with rationale ('local import keeps eval/ optional at admin.py load time') so future maintainers do not 'helpfully' move it to module-top.
 - [Phase 5]: Plan 05-03 pattern: When monkeypatching Settings inside admin route tests, target the LIVE admin module's settings attribute (admin.settings.field_name = ...). Patching tracer_ai.config.settings directly creates a new instance that the cached `tracer_ai.api.admin` package attribute never sees because `from tracer_ai.api import admin` resolves via the cached `tracer_ai.api` package (still in sys.modules), returning the OLD admin module from a prior test. Pattern documented in EA2/EA3 docstrings.
 - [Phase 5]: Plan 05-03 pattern: _FakeConn.fetchval(query) recorder shape — store (query, args) tuples then pop canned returns from a per-instance FIFO queue. Reusable by Plan 05-04 dispatcher tests (which need conn.fetchval for the UPDATE traces SET faithfulness step) and any future plan with sequential conn.fetchval calls. _FakePool/_FakeAcquireCtx thread fetchval_queue through.
+- [Phase 5]: Plan 05-04: EvalDispatcher + cross-task ctx propagation shipped — closes TRCR-04 deferral. EvalDispatcher class (D-5.10) spawns asyncio.create_task on enqueue; attach_context restores _current_span snapshot inside worker so rag.eval becomes a child of rag.request (Pitfall #1). ChatFinalEvent extended with 4 Field(exclude=True) private fields (ctx_snapshot, chunks_for_judge, query, answer); wire shape from model_dump(mode='json') is byte-unchanged from Phase 4 (T-05-04-10 verified). Pipeline.run_chat_stream captures snapshot BEFORE iterator's finally runs _emit_root. SSE generator dispatches eval AFTER yielding final frame; getattr fallback when dispatcher is None. Lifespan drain order: dispatcher (5s) → consumer (5s) → pool close. EVAL-02/04/05 acceptance: judge failures NEVER fail user requests (CF1); rag.eval has parent_span_id == rag.request.span_id (PA2); 25s budget headroom under 30s envelope (LA1). 19 net new tests (10 unit DA1-DA10 + 9 integration PA1-PA3/CF1-CF3/LA1/LD1-LD2); 280/280+1s full suite green. Commits 3611972 + c2361a5.
+- [Phase 5]: Plan 05-04 pattern: Cross-task contextvar parentage — (1) construct stub Span in pipeline; (2) set_current_span(stub) + capture_context() in caller BEFORE the iterator's finally; (3) attach_context(snapshot) in dispatcher worker; (4) current_span() in worker reads stub. Reusable for any async-after-response work (Phase 6 regression CLI; v2 multi-judge ensemble).
+- [Phase 5]: Plan 05-04 pattern: Field(exclude=True) for in-process model attachments — when a Pydantic model's wire shape is contractually fixed but in-process consumers need richer state, use exclude=True with arbitrary_types_allowed=True for non-Pydantic types (e.g., contextvars.Context). chunks_for_judge typed list[Any] (not list[RetrievedChunk]) so duck-typed test doubles still work; the typed contract is one layer down at the dispatcher's chunks: list[RetrievedChunk] parameter.
+- [Phase 5]: Plan 05-04 pattern: Source-position drain-ordering test — inspect.getsource(lifespan) + re.search for both call sites + assert ordering. Catches future re-orderings at PR review time with no live infra needed. Reusable for any ordering invariant in lifespan/finally chains.
 
 ### Pending Todos
 
@@ -168,6 +173,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-08T18:48:46Z
-Stopped at: Plan 05-03 complete (GET /admin/eval-config + GET /admin/queue-health; D-5.13 + FBCK-07 fix); Plan 05-04 next
+Last session: 2026-05-08T20:00:00Z
+Stopped at: Plan 05-04 complete (EvalDispatcher + cross-task ctx propagation; closes TRCR-04 deferral; EVAL-02/04/05); Plan 05-05 next
 Resume file: None
