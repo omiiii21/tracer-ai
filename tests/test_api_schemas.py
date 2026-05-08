@@ -297,3 +297,84 @@ def test_chunking_config_patch_alias_of_chunking_config() -> None:
     """ChunkingConfigPatch is the same shape as ChunkingConfig."""
     patch = ChunkingConfigPatch(chunk_size=600, overlap=50)
     assert patch.chunk_size == 600
+
+
+# ---------------------------------------------------------------------------
+# Phase 5 Plan 05 (D-5.17 / DASH-01..04) -- TimeseriesBucket / TimeseriesResponse
+# ---------------------------------------------------------------------------
+
+
+def test_timeseries_bucket_full_row_parses() -> None:
+    """SC1: TimeseriesBucket parses a fully-populated bucket row."""
+    from tracer_ai.api.schemas import TimeseriesBucket
+
+    bucket = TimeseriesBucket(
+        bucket_start=datetime.now(UTC),
+        latency_p50=100.0,
+        latency_p95=250.0,
+        cost_sum=0.001,
+        faithfulness_mean=0.85,
+        feedback_down_ratio=0.1,
+        request_count=5,
+    )
+    assert bucket.request_count == 5
+    assert bucket.faithfulness_mean == 0.85
+
+
+def test_timeseries_bucket_empty_bucket_parses() -> None:
+    """SC2: empty bucket (no traces in window) parses with NULL aggregates + count=0."""
+    from tracer_ai.api.schemas import TimeseriesBucket
+
+    bucket = TimeseriesBucket(
+        bucket_start=datetime.now(UTC),
+        latency_p50=None,
+        latency_p95=None,
+        cost_sum=0.0,
+        faithfulness_mean=None,
+        feedback_down_ratio=None,
+        request_count=0,
+    )
+    assert bucket.request_count == 0
+    assert bucket.faithfulness_mean is None
+    assert bucket.feedback_down_ratio is None
+
+
+def test_timeseries_bucket_rejects_extra_field() -> None:
+    """SC3: extra='forbid' on TimeseriesBucket."""
+    from tracer_ai.api.schemas import TimeseriesBucket
+
+    with pytest.raises(ValidationError):
+        TimeseriesBucket(  # type: ignore[call-arg]
+            bucket_start=datetime.now(UTC),
+            cost_sum=0.0,
+            request_count=0,
+            extra="x",
+        )
+
+
+def test_timeseries_response_window_literal_24h_parses() -> None:
+    """SC4a: window='24h' is allowed."""
+    from tracer_ai.api.schemas import TimeseriesResponse
+
+    resp = TimeseriesResponse(window="24h", buckets=[])
+    assert resp.window == "24h"
+
+
+def test_timeseries_response_invalid_window_raises() -> None:
+    """SC4b: window='5m' fails Literal validation."""
+    from tracer_ai.api.schemas import TimeseriesResponse
+
+    with pytest.raises(ValidationError):
+        TimeseriesResponse(window="5m", buckets=[])  # type: ignore[arg-type]
+
+
+def test_timeseries_bucket_rejects_negative_request_count() -> None:
+    """SC5: request_count must be >= 0."""
+    from tracer_ai.api.schemas import TimeseriesBucket
+
+    with pytest.raises(ValidationError):
+        TimeseriesBucket(
+            bucket_start=datetime.now(UTC),
+            cost_sum=0.0,
+            request_count=-1,
+        )

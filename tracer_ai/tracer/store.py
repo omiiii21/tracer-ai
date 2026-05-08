@@ -47,6 +47,25 @@ from tracer_ai.tracer.writer import Span, TraceWriter
 log = structlog.get_logger()
 
 
+# Phase 5 Plan 05 (D-5.17): adaptive bucket sizing for GET /traces/timeseries.
+# Maps the route-level Literal["1h","24h","7d","30d"] to a triple of:
+#   (date_trunc unit, generate_series interval, since interval).
+# The values are hard-coded -- user input never enters the SQL string
+# (T-05-05-01 mitigation; FastAPI's Literal validation rejects all other
+# strings BEFORE the route body runs).
+#
+# The "5min" unit is special-cased in the timeseries() SQL composer because
+# Postgres date_trunc() supports only natural intervals (minute/hour/day);
+# 5-min bucketing is achieved via the subtraction-trick (date_trunc('hour')
+# + (EXTRACT(MINUTE)::int / 5) * interval '5 minutes').
+_BUCKET_BY_WINDOW: dict[str, tuple[str, str, str]] = {
+    "1h": ("minute", "1 minute", "1 hour"),
+    "24h": ("5min", "5 minutes", "24 hours"),
+    "7d": ("hour", "1 hour", "7 days"),
+    "30d": ("day", "1 day", "30 days"),
+}
+
+
 @dataclass(frozen=True)
 class TraceListFilters:
     """Filter parameters for ``list_traces`` (docs/api.md §4 TraceListQuery).
@@ -329,3 +348,140 @@ class PostgresTraceStore:
             next_cursor = encode_cursor(last["started_at"], last["trace_id"])
 
         return items, next_cursor
+
+    async def timeseries(
+        self, *, window: Literal["1h", "24h", "7d", "30d"]
+    ) -> list[dict[str, Any]]:
+        """Adaptive-bucket time-series aggregation for the dashboard (D-5.17).
+
+        Returns one ``dict[str, Any]`` per bucket, ordered by ``bucket_start``
+        ascending. Empty buckets show as rows with NULL aggregates and
+        ``request_count=0`` (LEFT JOIN against ``generate_series``). The
+        frontend Tremor chart's ``connectNulls=false`` (D-5.07) renders gaps
+        for these so judge-error gaps and no-traffic gaps are visually
+        distinct from low-faithfulness scores.
+
+        Bucket sizing per window (D-5.17):
+          - 1h  -> 1-min buckets   (60 buckets)
+          - 24h -> 5-min buckets   (288 buckets; subtraction trick)
+          - 7d  -> 1-hour buckets  (168 buckets)
+          - 30d -> 1-day buckets   (30 buckets)
+
+        Security note (T-05-05-01 mitigation): the SQL is composed with
+        f-string interpolation of ``unit`` / ``interval`` / ``since``
+        strings, but those values come from the hard-coded
+        ``_BUCKET_BY_WINDOW`` dict -- NOT from user input. FastAPI's Literal
+        validation rejects any window value not in the keys of that dict
+        BEFORE the route body runs. SQL injection via the route is
+        impossible.
+
+        Module-deps DAG (D-2.27): returns ``list[dict[str, Any]]`` (NOT
+        Pydantic) -- preserves ``tracer_ai/tracer/`` not importing
+        ``tracer_ai/api/``.
+
+        In-flight trace exclusion (D-4.18 invariant): ``WHERE latency_ms IS
+        NOT NULL`` -- in-progress traces don't pollute the bucket
+        aggregates.
+        """
+        if window not in _BUCKET_BY_WINDOW:
+            raise ValueError(f"Unknown window: {window!r}")
+        unit, interval, since = _BUCKET_BY_WINDOW[window]
+
+        if unit == "5min":
+            # Subtraction trick: date_trunc supports only natural intervals
+            # (minute/hour/day). For 5-min bucketing, align to hour then add
+            # (EXTRACT(MINUTE)::int / 5) * 5 minutes.
+            sql = f"""
+                WITH params AS (
+                  SELECT
+                    date_trunc('hour', now()) - interval '{since}' AS since_at,
+                    date_trunc('minute', now()) AS until_at,
+                    interval '{interval}' AS bucket_interval
+                ),
+                buckets AS (
+                  SELECT generate_series(
+                    (SELECT since_at FROM params),
+                    (SELECT until_at FROM params),
+                    (SELECT bucket_interval FROM params)
+                  ) AS bucket_start
+                ),
+                trace_data AS (
+                  SELECT
+                    date_trunc('hour', started_at)
+                      + (EXTRACT(MINUTE FROM started_at)::int / 5)
+                          * interval '5 minutes' AS bucket_start,
+                    latency_ms, estimated_cost_usd, faithfulness, feedback_rating
+                  FROM traces
+                  WHERE started_at >= (SELECT since_at FROM params)
+                    AND started_at <  (SELECT until_at FROM params)
+                                       + interval '{interval}'
+                    AND latency_ms IS NOT NULL
+                )
+                SELECT
+                  b.bucket_start,
+                  PERCENTILE_CONT(0.5)  WITHIN GROUP (ORDER BY td.latency_ms)::float8
+                    AS latency_p50,
+                  PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY td.latency_ms)::float8
+                    AS latency_p95,
+                  COALESCE(SUM(td.estimated_cost_usd), 0)::float8 AS cost_sum,
+                  AVG(td.faithfulness)::float8 AS faithfulness_mean,
+                  CASE WHEN COUNT(td.feedback_rating) = 0 THEN NULL
+                       ELSE SUM(CASE WHEN td.feedback_rating = -1 THEN 1 ELSE 0 END)
+                            ::float8
+                            / COUNT(td.feedback_rating)::float8 END
+                    AS feedback_down_ratio,
+                  COUNT(td.latency_ms)::int AS request_count
+                FROM buckets b
+                LEFT JOIN trace_data td ON td.bucket_start = b.bucket_start
+                GROUP BY b.bucket_start
+                ORDER BY b.bucket_start ASC
+            """
+        else:
+            # Natural-interval bucketing for 1m / 1h / 1d
+            sql = f"""
+                WITH params AS (
+                  SELECT
+                    date_trunc('{unit}', now()) - interval '{since}' AS since_at,
+                    date_trunc('{unit}', now()) AS until_at,
+                    interval '{interval}' AS bucket_interval
+                ),
+                buckets AS (
+                  SELECT generate_series(
+                    (SELECT since_at FROM params),
+                    (SELECT until_at FROM params),
+                    (SELECT bucket_interval FROM params)
+                  ) AS bucket_start
+                ),
+                trace_data AS (
+                  SELECT
+                    date_trunc('{unit}', started_at) AS bucket_start,
+                    latency_ms, estimated_cost_usd, faithfulness, feedback_rating
+                  FROM traces
+                  WHERE started_at >= (SELECT since_at FROM params)
+                    AND started_at <  (SELECT until_at FROM params)
+                                       + interval '{interval}'
+                    AND latency_ms IS NOT NULL
+                )
+                SELECT
+                  b.bucket_start,
+                  PERCENTILE_CONT(0.5)  WITHIN GROUP (ORDER BY td.latency_ms)::float8
+                    AS latency_p50,
+                  PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY td.latency_ms)::float8
+                    AS latency_p95,
+                  COALESCE(SUM(td.estimated_cost_usd), 0)::float8 AS cost_sum,
+                  AVG(td.faithfulness)::float8 AS faithfulness_mean,
+                  CASE WHEN COUNT(td.feedback_rating) = 0 THEN NULL
+                       ELSE SUM(CASE WHEN td.feedback_rating = -1 THEN 1 ELSE 0 END)
+                            ::float8
+                            / COUNT(td.feedback_rating)::float8 END
+                    AS feedback_down_ratio,
+                  COUNT(td.latency_ms)::int AS request_count
+                FROM buckets b
+                LEFT JOIN trace_data td ON td.bucket_start = b.bucket_start
+                GROUP BY b.bucket_start
+                ORDER BY b.bucket_start ASC
+            """
+
+        async with self._pool.acquire(timeout=5.0) as conn:
+            rows = await conn.fetch(sql)
+        return [dict(r) for r in rows]

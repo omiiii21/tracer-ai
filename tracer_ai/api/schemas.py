@@ -367,6 +367,51 @@ class TraceDetailResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# /traces/timeseries  (GET)  — Phase 5 Plan 05 / D-5.17 / DASH-01..04
+# ---------------------------------------------------------------------------
+
+
+class TimeseriesBucket(BaseModel):
+    """One bucket in GET /traces/timeseries response (D-5.17 / DASH-01..04).
+
+    Empty buckets (no traces in the time window) render as rows with NULL
+    aggregates and ``request_count=0`` -- the frontend Tremor chart's
+    ``connectNulls=false`` (D-5.07) renders gaps for these so judge-error
+    gaps and no-traffic gaps are visually distinct from low-faithfulness
+    scores.
+
+    NULL semantics:
+      - ``latency_p50`` / ``latency_p95``: NULL when no traces in bucket
+        (PERCENTILE_CONT over empty set is NULL).
+      - ``faithfulness_mean``: NULL when ALL traces in bucket have NULL
+        faithfulness (judge has not yet scored, or judge errored).
+      - ``feedback_down_ratio``: NULL when no traces in the bucket have
+        a feedback rating (numerator/denominator = 0/0 -> NULL via CASE).
+      - ``cost_sum``: COALESCE(SUM, 0) -- always a number (never NULL).
+      - ``request_count``: COUNT(latency_ms) -- always a number (>= 0).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    bucket_start: datetime
+    latency_p50: float | None = None
+    latency_p95: float | None = None
+    cost_sum: float
+    faithfulness_mean: float | None = None
+    feedback_down_ratio: float | None = None
+    request_count: Annotated[int, Field(ge=0)]
+
+
+class TimeseriesResponse(BaseModel):
+    """GET /traces/timeseries response envelope (DASH-01..04)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    window: Literal["1h", "24h", "7d", "30d"]
+    buckets: list[TimeseriesBucket]
+
+
+# ---------------------------------------------------------------------------
 # Common Error Envelope (docs/api.md §"Common Error Envelope")
 # ---------------------------------------------------------------------------
 

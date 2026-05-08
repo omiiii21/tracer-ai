@@ -283,6 +283,85 @@ class TraceListResponse(BaseModel):
 |--------|------------|------|
 | 400    | `INVALID_REQUEST` | malformed query parameter (e.g., `min_faithfulness=2.0`) |
 
+## GET /traces/timeseries
+
+Adaptive-bucket time-series for the dashboard quality charts (DASH-01 latency p50/p95, DASH-02 cost over time, DASH-03 faithfulness mean, DASH-04 manual feedback ratio). One endpoint powers all four chart panels and the KPI strip; the frontend pivots from the single response (one `fetch` per page mount, then TanStack Query `staleTime` keyed on the `window` parameter).
+
+Empty buckets — periods with no requests, or judge-failed periods where the eval span carries no faithfulness — are returned as rows with NULL aggregates and `request_count=0`. The frontend Tremor chart's `connectNulls=false` ([D-5.07](../.planning/phases/05-quality-feedback/05-CONTEXT.md)) renders gaps for these so judge-error gaps and no-traffic gaps stay diagnostically distinct from low-faithfulness scores.
+
+**Query parameters:**
+
+```python
+class TimeseriesQuery(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    window: Literal["1h", "24h", "7d", "30d"] = "24h"
+```
+
+**Adaptive bucket sizing (D-5.17):**
+
+| `window` | Bucket size | Bucket count |
+|----------|-------------|--------------|
+| `1h`     | 1 minute    | 60           |
+| `24h`    | 5 minutes   | 288          |
+| `7d`     | 1 hour      | 168          |
+| `30d`    | 1 day       | 30           |
+
+**Response schema:**
+
+```python
+class TimeseriesBucket(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    bucket_start: datetime
+    latency_p50: float | None = None              # NULL when no traces in bucket
+    latency_p95: float | None = None              # NULL when no traces in bucket
+    cost_sum: float                               # always >= 0; COALESCE(SUM, 0)
+    faithfulness_mean: float | None = None        # NULL when no eval-scored traces in bucket
+    feedback_down_ratio: float | None = None      # NULL when no rated traces in bucket
+    request_count: Annotated[int, Field(ge=0)]    # always >= 0; COUNT(latency_ms)
+
+class TimeseriesResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    window: Literal["1h", "24h", "7d", "30d"]
+    buckets: list[TimeseriesBucket]
+```
+
+**Example response body (window=24h, abbreviated):**
+
+```json
+{
+  "window": "24h",
+  "buckets": [
+    {
+      "bucket_start": "2026-05-04T04:00:00Z",
+      "latency_p50": null,
+      "latency_p95": null,
+      "cost_sum": 0.0,
+      "faithfulness_mean": null,
+      "feedback_down_ratio": null,
+      "request_count": 0
+    },
+    {
+      "bucket_start": "2026-05-04T04:05:00Z",
+      "latency_p50": 1850.0,
+      "latency_p95": 4120.0,
+      "cost_sum": 0.018,
+      "faithfulness_mean": 0.78,
+      "feedback_down_ratio": 0.0,
+      "request_count": 6
+    }
+  ]
+}
+```
+
+**In-flight trace exclusion:** the underlying SQL filters `WHERE latency_ms IS NOT NULL` so in-progress traces don't pollute the bucket aggregates (Phase 4 D-4.18 invariant preserved).
+
+**Error responses:**
+
+| Status | error_code | When |
+|--------|------------|------|
+| 422    | `UNPROCESSABLE_ENTITY` | `window` is not one of `{1h, 24h, 7d, 30d}` (FastAPI Literal validation) |
+| 400    | `INVALID_REQUEST` | defensive only — store-level guard rejects unknown windows |
+
 ## GET /traces/{trace_id}
 
 Full trace tree — the root request span plus all child spans plus their oversize payloads (full prompts, full responses, retrieved-chunk content). Spans carry only typed metadata in `attrs`; payloads >4 KB live in `span_payloads` per the convention in [trace-schema.md](./trace-schema.md) and [ADR 004](./decisions/004-trace-storage.md).

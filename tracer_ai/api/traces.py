@@ -30,6 +30,8 @@ from tracer_ai.api.schemas import (
     ErrorResponse,
     SpanInResponse,
     SpanPayloadResponse,
+    TimeseriesBucket,
+    TimeseriesResponse,
     TraceDetailResponse,
     TraceListItem,
     TraceListResponse,
@@ -119,6 +121,48 @@ async def list_traces(
     # Plan 04-04 Task 2 -- store layer cannot import api.schemas).
     typed_items = [TraceListItem(**row) for row in items_dict]
     return TraceListResponse(items=typed_items, next_cursor=next_cursor)
+
+
+@router.get("/traces/timeseries", response_model=TimeseriesResponse)
+async def get_traces_timeseries(
+    request: Request,
+    window: Annotated[
+        Literal["1h", "24h", "7d", "30d"],
+        Query(
+            description=(
+                "Adaptive bucket size: 1h->1min, 24h->5min, 7d->1hour, 30d->1day "
+                "(D-5.17 / DASH-01..04)."
+            ),
+        ),
+    ] = "24h",
+) -> TimeseriesResponse:
+    """Adaptive-bucket time-series for dashboard charts (DASH-01..04 / D-5.17).
+
+    Empty buckets are returned with NULL aggregates and request_count=0 so the
+    Tremor chart's connectNulls=false (D-5.07) renders gaps for them -- judge-
+    failure / no-traffic gaps stay diagnostically distinct from low-faithfulness
+    scores.
+
+    NOTE: this route is registered BEFORE GET /traces/{trace_id} so the literal
+    "timeseries" path segment doesn't get parsed as a UUID and 400'd.
+    """
+    pool: asyncpg.Pool = request.app.state.db_pool
+    writer = request.app.state.trace_writer
+    store = PostgresTraceStore(pool, writer)
+    try:
+        bucket_dicts = await store.timeseries(window=window)
+    except ValueError as exc:
+        # window is Literal-validated by FastAPI before we reach here, so this
+        # path is defensive only -- if the store-level guard ever fires, return
+        # 400 INVALID_REQUEST.
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=_err("INVALID_REQUEST", str(exc)),
+        ) from exc
+    return TimeseriesResponse(
+        window=window,
+        buckets=[TimeseriesBucket(**b) for b in bucket_dicts],
+    )
 
 
 @router.get("/traces/{trace_id}", response_model=TraceDetailResponse)
