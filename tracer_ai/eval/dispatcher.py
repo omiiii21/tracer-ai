@@ -36,6 +36,7 @@ from tracer_ai.tracer.context import attach_context, current_span
 from tracer_ai.tracer.span import (
     ERROR_TYPE,
     RAG_EVAL_FAITHFULNESS,
+    RAG_EVAL_JUDGE_COST_USD,
     RAG_EVAL_JUDGE_LATENCY_MS,
     RAG_EVAL_JUDGE_MODEL,
     RAG_EVAL_JUDGE_PROMPT_VERSION,
@@ -172,6 +173,7 @@ class EvalDispatcher:
                 eval_span.attrs[RAG_EVAL_JUDGE_LATENCY_MS] = scores.judge_latency_ms or int(
                     (time.perf_counter() - t0) * 1000
                 )
+                eval_span.attrs[RAG_EVAL_JUDGE_COST_USD] = scores.judge_cost_usd
                 eval_span.payload = {
                     "judge_prompt": scores.judge_prompt,
                     "judge_response": scores.judge_response,
