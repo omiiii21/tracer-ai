@@ -65,6 +65,26 @@ async def list_traces(
     feedback: Annotated[Literal["up", "down"] | None, Query()] = None,
     min_faithfulness: Annotated[float | None, Query(ge=0.0, le=1.0)] = None,
     max_latency_ms: Annotated[int | None, Query(ge=0)] = None,
+    max_faithfulness: Annotated[
+        float | None,
+        Query(
+            ge=0.0,
+            le=1.0,
+            description=(
+                "Max faithfulness; rows with faithfulness >= this are excluded; "
+                "rows with NULL faithfulness are also excluded (FBCK-03)."
+            ),
+        ),
+    ] = None,
+    sort_by: Annotated[
+        Literal["created_at_desc", "faithfulness_asc"],
+        Query(
+            description=(
+                "Sort order. created_at_desc = Phase 4 default; "
+                "faithfulness_asc = bad-answer queue Judge-flagged (FBCK-06)."
+            ),
+        ),
+    ] = "created_at_desc",
     cursor: Annotated[str | None, Query()] = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
 ) -> TraceListResponse:
@@ -81,6 +101,8 @@ async def list_traces(
         feedback=feedback,
         min_faithfulness=min_faithfulness,
         max_latency_ms=max_latency_ms,
+        max_faithfulness=max_faithfulness,
+        sort_by=sort_by,
     )
     try:
         items_dict, next_cursor = await store.list_traces(

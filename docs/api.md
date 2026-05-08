@@ -218,9 +218,17 @@ class TraceListQuery(BaseModel):
     feedback: Literal["up", "down"] | None = None                       # maps to feedback.rating IN (1) or (-1)
     min_faithfulness: Annotated[float, Field(ge=0.0, le=1.0)] | None = None  # rag.eval span attribute filter
     max_latency_ms: int | None = None                                   # rag.request span latency filter
+    # Phase 5 Plan 05 (FBCK-03 / FBCK-06)
+    max_faithfulness: Annotated[float, Field(ge=0.0, le=1.0)] | None = None  # bad-answer queue Judge-flagged; rows with NULL faithfulness are EXCLUDED when set
+    sort_by: Literal["created_at_desc", "faithfulness_asc"] = "created_at_desc"  # faithfulness_asc lowest-first powers FBCK-06 Judge-flagged tab
     limit: Annotated[int, Field(ge=1, le=200)] = 50
     cursor: str | None = None                                           # opaque base64 cursor from previous page's next_cursor
 ```
+
+**Phase 5 Plan 05 extensions (FBCK-03, FBCK-06):**
+
+- `max_faithfulness`: when set, only rows with `faithfulness IS NOT NULL AND faithfulness < max_faithfulness` are returned. Rows that have not yet been scored by the judge (NULL faithfulness) are EXCLUDED — they are not yet "judge-flagged." Combined with `min_faithfulness=0`, this expresses the Bad-Answer Queue Judge-flagged tab's `faithfulness < threshold` semantic.
+- `sort_by=faithfulness_asc`: orders rows by `faithfulness ASC NULLS LAST, started_at DESC, id DESC` — lowest-faithfulness first. Default `created_at_desc` preserves the Phase 4 ordering (`started_at DESC, id DESC`). Cursor v1 limitation: pagination boundaries follow `(started_at, id)` even with the asc-sort variant — acceptable for small datasets (<1000 judge-flagged traces); Phase 6 may add a faithfulness-aware cursor variant.
 
 **Response schema:**
 

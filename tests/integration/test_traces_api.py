@@ -264,3 +264,183 @@ def test_get_trace_returns_full_tree_when_present() -> None:
     assert body["spans"][1]["name"] == "rag.retrieve"
     assert str(span_b_id) in body["payloads"]
     assert body["payloads"][str(span_b_id)]["payload"] == {"retrieved_chunks": [{"score": 0.9}]}
+
+
+# ---------------------------------------------------------------------------
+# Phase 5 Plan 05 -- max_faithfulness + sort_by (FBCK-03 / FBCK-06)
+# ---------------------------------------------------------------------------
+
+
+def test_list_traces_max_faithfulness_filters_to_below_threshold() -> None:
+    """EX1: max_faithfulness=0.5 returns only rows with faithfulness < 0.5.
+
+    Rows with faithfulness >= 0.5 are excluded. Rows with NULL faithfulness
+    are EXCLUDED (FBCK-03 semantic: judge has not yet scored -> not
+    "judge-flagged").
+    """
+    from fastapi.testclient import TestClient
+
+    pool = _FakePool(list_rows=[])
+    app = _build_app(pool)
+    client = TestClient(app)
+    resp = client.get("/traces?max_faithfulness=0.5")
+    assert resp.status_code == 200
+    # Verify the SQL contains the exclusion-of-null clause for max_faithfulness.
+    captured_sql = pool.conn.captured_queries[0][0]
+    assert "faithfulness IS NOT NULL AND faithfulness <" in captured_sql
+    # Verify the bind value 0.5 was passed.
+    captured_args = pool.conn.captured_queries[0][1]
+    assert 0.5 in captured_args
+
+
+def test_list_traces_max_faithfulness_above_one_returns_422() -> None:
+    """EX2: max_faithfulness=1.5 fails validation."""
+    from fastapi.testclient import TestClient
+
+    pool = _FakePool(list_rows=[])
+    app = _build_app(pool)
+    client = TestClient(app)
+    resp = client.get("/traces?max_faithfulness=1.5")
+    assert resp.status_code == 422
+
+
+def test_list_traces_max_faithfulness_negative_returns_422() -> None:
+    """EX3: max_faithfulness=-0.1 fails validation."""
+    from fastapi.testclient import TestClient
+
+    pool = _FakePool(list_rows=[])
+    app = _build_app(pool)
+    client = TestClient(app)
+    resp = client.get("/traces?max_faithfulness=-0.1")
+    assert resp.status_code == 422
+
+
+def test_list_traces_sort_by_faithfulness_asc_orders_lowest_first() -> None:
+    """EX4: sort_by=faithfulness_asc -> ORDER BY faithfulness ASC NULLS LAST."""
+    from fastapi.testclient import TestClient
+
+    pool = _FakePool(list_rows=[])
+    app = _build_app(pool)
+    client = TestClient(app)
+    resp = client.get("/traces?sort_by=faithfulness_asc")
+    assert resp.status_code == 200
+    captured_sql = pool.conn.captured_queries[0][0]
+    assert "ORDER BY faithfulness ASC NULLS LAST" in captured_sql
+
+
+def test_list_traces_sort_by_default_preserves_phase4_order() -> None:
+    """EX5: sort_by omitted -> Phase 4 default ORDER BY started_at DESC, id DESC."""
+    from fastapi.testclient import TestClient
+
+    pool = _FakePool(list_rows=[])
+    app = _build_app(pool)
+    client = TestClient(app)
+    resp = client.get("/traces")
+    assert resp.status_code == 200
+    captured_sql = pool.conn.captured_queries[0][0]
+    assert "ORDER BY started_at DESC, id DESC" in captured_sql
+    # Negative: ASC clause must NOT appear in default mode.
+    assert "ORDER BY faithfulness ASC NULLS LAST" not in captured_sql
+
+
+def test_list_traces_sort_by_invalid_value_returns_422() -> None:
+    """EX6: sort_by=invalid_value fails Literal validation."""
+    from fastapi.testclient import TestClient
+
+    pool = _FakePool(list_rows=[])
+    app = _build_app(pool)
+    client = TestClient(app)
+    resp = client.get("/traces?sort_by=invalid_value")
+    assert resp.status_code == 422
+
+
+def test_list_traces_sort_by_created_at_desc_explicit() -> None:
+    """EX5b: sort_by=created_at_desc explicit also preserves default."""
+    from fastapi.testclient import TestClient
+
+    pool = _FakePool(list_rows=[])
+    app = _build_app(pool)
+    client = TestClient(app)
+    resp = client.get("/traces?sort_by=created_at_desc")
+    assert resp.status_code == 200
+    captured_sql = pool.conn.captured_queries[0][0]
+    assert "ORDER BY started_at DESC, id DESC" in captured_sql
+
+
+def test_list_traces_combined_feedback_down_with_faithfulness_asc() -> None:
+    """EX7: feedback=down AND sort_by=faithfulness_asc compose -- FBCK-03/06 pattern."""
+    from fastapi.testclient import TestClient
+
+    rows = [
+        {
+            "id": _trace_id(),
+            "started_at": datetime.now(UTC),
+            "query_text": "Bad answer 1",
+            "latency_ms": 1500,
+            "estimated_cost_usd": 0.001,
+            "faithfulness": 0.21,
+            "feedback_rating": -1,
+        },
+        {
+            "id": _trace_id(),
+            "started_at": datetime.now(UTC),
+            "query_text": "Bad answer 2",
+            "latency_ms": 1700,
+            "estimated_cost_usd": 0.002,
+            "faithfulness": 0.45,
+            "feedback_rating": -1,
+        },
+    ]
+    pool = _FakePool(list_rows=rows)
+    app = _build_app(pool)
+    client = TestClient(app)
+    resp = client.get("/traces?feedback=down&sort_by=faithfulness_asc")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert len(body["items"]) == 2
+    # Confirm SQL has BOTH the feedback predicate and the new ORDER BY.
+    captured_sql = pool.conn.captured_queries[0][0]
+    assert "feedback_rating" in captured_sql
+    assert "ORDER BY faithfulness ASC NULLS LAST" in captured_sql
+
+
+def test_list_traces_cursor_pagination_compatible_with_faithfulness_asc() -> None:
+    """EX8: Cursor pagination still works with sort_by=faithfulness_asc.
+
+    v1 limitation (documented in plan + store.py): the cursor encodes only
+    (started_at, id), so pagination boundaries follow started_at not
+    faithfulness even for the asc-sort variant. The cursor format stays
+    compatible (no decode error). For small datasets (<1000 judge-flagged
+    traces) this is acceptable.
+    """
+    from fastapi.testclient import TestClient
+
+    # Seed limit+1 rows so the store generates a next_cursor.
+    rows = []
+    for i in range(3):
+        rows.append(
+            {
+                "id": _trace_id(),
+                "started_at": datetime.now(UTC),
+                "query_text": f"q{i}",
+                "latency_ms": 1500 + i,
+                "estimated_cost_usd": 0.001,
+                "faithfulness": 0.1 + i * 0.1,
+                "feedback_rating": None,
+            }
+        )
+    pool = _FakePool(list_rows=rows)
+    app = _build_app(pool)
+    client = TestClient(app)
+    resp = client.get("/traces?sort_by=faithfulness_asc&limit=2")
+    assert resp.status_code == 200
+    body = resp.json()
+    # 3 rows, limit=2 -> we get 2 items + a non-None next_cursor.
+    assert len(body["items"]) == 2
+    assert body["next_cursor"] is not None
+    # The cursor should round-trip on a follow-up request without 400.
+    pool2 = _FakePool(list_rows=[])
+    app2 = _build_app(pool2)
+    client2 = TestClient(app2)
+    resp2 = client2.get(f"/traces?sort_by=faithfulness_asc&limit=2&cursor={body['next_cursor']}")
+    assert resp2.status_code == 200

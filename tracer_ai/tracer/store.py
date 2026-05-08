@@ -49,7 +49,17 @@ log = structlog.get_logger()
 
 @dataclass(frozen=True)
 class TraceListFilters:
-    """Filter parameters for ``list_traces`` (docs/api.md §4 TraceListQuery)."""
+    """Filter parameters for ``list_traces`` (docs/api.md §4 TraceListQuery).
+
+    Phase 5 Plan 05 extensions:
+      - ``max_faithfulness`` (FBCK-03): when set, rows with
+        ``faithfulness IS NOT NULL AND faithfulness < max_faithfulness`` are
+        included. Rows with NULL faithfulness are EXCLUDED (judge has not
+        yet scored -> not "judge-flagged").
+      - ``sort_by`` (FBCK-06): ``"created_at_desc"`` (default; preserves
+        Phase 4 ordering) or ``"faithfulness_asc"`` (lowest-first; powers
+        the bad-answer queue Judge-flagged tab).
+    """
 
     query: str | None = None
     since: datetime | None = None
@@ -57,6 +67,8 @@ class TraceListFilters:
     feedback: Literal["up", "down"] | None = None
     min_faithfulness: float | None = None
     max_latency_ms: int | None = None
+    max_faithfulness: float | None = None
+    sort_by: Literal["created_at_desc", "faithfulness_asc"] = "created_at_desc"
 
 
 def encode_cursor(started_at: datetime, trace_id: UUID) -> str:
@@ -239,11 +251,21 @@ class PostgresTraceStore:
         elif filters.feedback == "down":
             feedback_value = -1
 
-        # Build parameterized SQL. We always pass all 9 binds in fixed order.
+        # Build parameterized SQL. We always pass all 10 binds in fixed order.
         # The "$N IS NULL" guard turns each filter on/off without dynamic SQL —
         # avoids the SQL-injection class of bugs (T-04-04-01) and keeps the
         # plan cache stable across filter combinations (Pitfall 5).
-        sql = (
+        #
+        # Phase 5 Plan 05 (FBCK-03): the max_faithfulness predicate is
+        # "faithfulness IS NOT NULL AND faithfulness < $9" so rows without a
+        # judge score (NULL faithfulness) are EXCLUDED when the filter is on.
+        # This is the documented FBCK-03 semantic.
+        #
+        # Phase 5 Plan 05 (FBCK-06): ORDER BY is composed by Python conditional
+        # from a hard-coded set (filters.sort_by is Literal-validated by
+        # FastAPI at the route boundary). SQL injection via the new param is
+        # impossible.
+        base_select = (
             "SELECT id, started_at, query_text, latency_ms, estimated_cost_usd, "
             "faithfulness, feedback_rating "
             "FROM traces "
@@ -255,9 +277,19 @@ class PostgresTraceStore:
             "  AND ($5::real IS NULL OR faithfulness >= $5) "
             "  AND ($6::int IS NULL OR latency_ms <= $6) "
             "  AND ($7::timestamptz IS NULL OR (started_at, id) < ($7::timestamptz, $8::uuid)) "
-            "ORDER BY started_at DESC, id DESC "
-            "LIMIT $9::int"
+            "  AND ($9::float IS NULL OR "
+            "(faithfulness IS NOT NULL AND faithfulness < $9::float)) "
         )
+        # Cursor-pagination v1 limitation (documented in plan + threat
+        # T-05-05-06): the cursor encodes only (started_at, id). For
+        # sort_by=faithfulness_asc, page boundaries follow started_at not
+        # faithfulness. Acceptable for small datasets (<1000 judge-flagged
+        # traces); Phase 6 may add a faithfulness-aware cursor variant.
+        if filters.sort_by == "faithfulness_asc":
+            order_by = "ORDER BY faithfulness ASC NULLS LAST, started_at DESC, id DESC"
+        else:  # default created_at_desc
+            order_by = "ORDER BY started_at DESC, id DESC"
+        sql = base_select + order_by + " LIMIT $10::int"
         params: tuple[Any, ...] = (
             filters.query,
             filters.since,
@@ -267,6 +299,7 @@ class PostgresTraceStore:
             filters.max_latency_ms,
             cursor_started_at,
             str(cursor_id) if cursor_id is not None else None,
+            filters.max_faithfulness,
             limit + 1,  # fetch one extra to determine if next page exists
         )
 
