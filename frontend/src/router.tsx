@@ -4,6 +4,7 @@ import { AppShell } from "@/components/AppShell";
 import { Admin } from "@/pages/Admin";
 import { Chat } from "@/pages/Chat";
 import { Dashboard } from "@/pages/Dashboard";
+import { Queue } from "@/pages/Queue";
 import { TraceDetail } from "@/pages/TraceDetail";
 
 export const router = createBrowserRouter([
@@ -14,6 +15,7 @@ export const router = createBrowserRouter([
       { path: "/chat", element: <Chat /> },
       { path: "/admin", element: <Admin /> },
       { path: "/dashboard", element: <Dashboard /> },
+      { path: "/dashboard/queue", element: <Queue /> },
       { path: "/dashboard/traces/:trace_id", element: <TraceDetail /> },
     ],
   },

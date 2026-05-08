@@ -27,6 +27,7 @@ export function AppShell() {
             </NavLink>
             <NavLink
               to="/dashboard"
+              end
               className={({ isActive }) =>
                 cn(
                   isActive
@@ -36,6 +37,18 @@ export function AppShell() {
               }
             >
               Dashboard
+            </NavLink>
+            <NavLink
+              to="/dashboard/queue"
+              className={({ isActive }) =>
+                cn(
+                  isActive
+                    ? "font-medium text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )
+              }
+            >
+              Queue
             </NavLink>
             <NavLink
               to="/admin"
