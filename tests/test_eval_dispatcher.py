@@ -415,3 +415,86 @@ async def test_da10_pool_update_failure_logs_warning_does_not_reraise() -> None:
 
     # The eval span emit still happened (CLAUDE.md invariant: never fail user requests).
     assert len(writer.emitted) == 1
+
+
+class _FixedCostJudge:
+    """DA11: inline judge double that returns a known judge_cost_usd > 0.
+
+    MockJudge in tracer_ai/eval/llm_judge.py hardcodes judge_cost_usd=0.0
+    (line 264), so we cannot use it to prove the dispatcher stamps a
+    non-zero cost. This double mirrors the _SlowMockJudge pattern already
+    used in this file for the same reason -- a test-local Judge double.
+    """
+
+    name: str = "fixed-cost-mock"
+
+    def __init__(self, judge_cost_usd: float) -> None:
+        self._cost = judge_cost_usd
+
+    async def score(self, answer: str, chunks: list[Any], query: str) -> Any:
+        from tracer_ai.eval.protocols import EvalScores
+
+        return EvalScores(
+            faithfulness=0.7,
+            relevance=0.8,
+            rationale="cost-test",
+            judge_prompt="",
+            judge_response={"faithfulness": 0.7, "relevance": 0.8},
+            input_tokens=10,
+            output_tokens=5,
+            judge_latency_ms=42,
+            judge_cost_usd=self._cost,
+        )
+
+
+@pytest.mark.asyncio
+async def test_da11_judge_cost_usd_flows_to_eval_span_attrs() -> None:
+    """DA11 (EVAL-04 gap closure): scores.judge_cost_usd is stamped on
+    eval_span.attrs[RAG_EVAL_JUDGE_COST_USD] in the success branch."""
+    from tracer_ai.eval.dispatcher import EvalDispatcher
+    from tracer_ai.tracer.span import RAG_EVAL_JUDGE_COST_USD
+
+    judge = _FixedCostJudge(judge_cost_usd=1.5e-4)
+    writer = _FakeWriter()
+    pool = _FakePool()
+    dispatcher = EvalDispatcher(judge=judge, writer=writer, pool=pool)
+
+    trace_id = uuid4()
+    ctx = contextvars.copy_context()
+    dispatcher.enqueue(trace_id, ctx, "answer", [_make_chunk()], "q")
+
+    await asyncio.gather(*dispatcher._pending, return_exceptions=True)
+
+    assert len(writer.emitted) == 1
+    span = writer.emitted[0]
+    # EVAL-04: rag.eval span MUST record judge_cost_usd.
+    assert RAG_EVAL_JUDGE_COST_USD in span.attrs
+    assert span.attrs[RAG_EVAL_JUDGE_COST_USD] == pytest.approx(1.5e-4)
+    assert span.attrs[RAG_EVAL_JUDGE_COST_USD] > 0
+
+
+@pytest.mark.asyncio
+async def test_da11b_judge_failure_omits_cost_attribute() -> None:
+    """DA11 negative: judge failure path does NOT fabricate a zero cost.
+
+    On TimeoutError, scores is None and the entire `if scores is not None:`
+    block is skipped -- including the new cost stamp. This proves the
+    cost assignment is correctly nested inside the success guard.
+    """
+    from tracer_ai.eval.dispatcher import EvalDispatcher
+    from tracer_ai.eval.llm_judge import MockJudge
+    from tracer_ai.tracer.span import RAG_EVAL_JUDGE_COST_USD
+
+    judge = MockJudge(raise_on_call=TimeoutError)
+    writer = _FakeWriter()
+    pool = _FakePool()
+    dispatcher = EvalDispatcher(judge=judge, writer=writer, pool=pool)
+
+    trace_id = uuid4()
+    ctx = contextvars.copy_context()
+    dispatcher.enqueue(trace_id, ctx, "answer", [_make_chunk()], "q")
+    await asyncio.gather(*dispatcher._pending, return_exceptions=True)
+
+    assert len(writer.emitted) == 1
+    span = writer.emitted[0]
+    assert RAG_EVAL_JUDGE_COST_USD not in span.attrs
