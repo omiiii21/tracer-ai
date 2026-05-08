@@ -4,14 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Plan 05-07 complete (Phase 5 frontend — Queue + QualityCharts + 5th KpiCard + diagnosis-tag Select; FBCK-02/03/05/06/07 + DASH-01..06). Phase 5 plan execution complete (7/7); awaiting Phase 5 verifier gate before Phase 6 entry.
-last_updated: "2026-05-08T14:05:07.484Z"
-last_activity: 2026-05-08 -- Phase 05 planning complete
+last_updated: "2026-05-08T15:04:25.008Z"
+last_activity: 2026-05-08
 progress:
   total_phases: 7
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 37
-  completed_plans: 36
-  percent: 97
+  completed_plans: 37
+  percent: 100
 ---
 
 # Project State
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 
 ## Current Position
 
-Phase: 05 (quality-feedback) — VERIFICATION PENDING
-Plan: 7 of 7 (all plans complete)
+Phase: 05 (quality-feedback) — EXECUTING
+Plan: 2 of 8
 Status: Ready to execute
-Last activity: 2026-05-08 -- Phase 05 planning complete
+Last activity: 2026-05-08
 
 Progress: [██████████] 100%
 
@@ -60,6 +60,7 @@ Progress: [██████████] 100%
 | Phase 05 P03 | 36m | 1 task  | 4 files  |
 | Phase 05 P04 | 50m | 2 tasks | 11 files |
 | Phase 05 P07 | 18m | 3 tasks | 7 files  |
+| Phase 05 P08 | 18 min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -164,6 +165,7 @@ Recent decisions affecting current work:
 - [Phase 5]: Plan 05-07 pattern: detail-only optional field on TraceDetailResponse (NOT TraceListItem) — diagnosis_tag is sourced from MAX(created_at) feedback row per trace_id; the list endpoint cannot cheaply surface it without a per-row LATERAL subquery, but the detail endpoint can. Frontend TS interface puts the field on TraceDetailResponse only; UI degrades gracefully to '— none —' until backend wires the LATERAL subquery (5-10 LOC follow-up).
 - [Phase 5]: Plan 05-07 pattern: queryKey-spreads-threshold for endpoint-driven filter values — when a TanStack queryKey depends on a value fetched from another endpoint (here, threshold from getEvalConfig), spread it into the dependent queryKey (['queue', 'judge', threshold]). When the upstream endpoint refetches and returns a different threshold, the dependent query auto-invalidates. D-4.18 extended.
 - [Phase 5]: Plan 05-07 pattern: rating-preservation in tag-update UX — when an operator-driven Select adds metadata to an existing record but doesn't intend to change a separate field, preserve that field instead of defaulting it. DiagnosisTagPanel sends `feedbackRating ?? -1` (preserve existing rating; default to -1 only when there was none). Pattern reusable for any UI that appends metadata to existing records.
+- [Phase 05]: Closed EVAL-04 partial gap by stamping scores.judge_cost_usd onto rag.eval span attrs — EVAL-04 in 05-VERIFICATION.md was partially_satisfied: judge_model + prompt_version + latency_ms + faithfulness + relevance were stamped, but judge_cost_usd was missing. The constant RAG_EVAL_JUDGE_COST_USD was already defined and EvalScores.judge_cost_usd was already populated by AnthropicJudge.score; only the dispatcher's stamp loop needed extension. Mechanical fix: one new import + one new assignment inside the existing 'if scores is not None:' guard, plus DA11/DA11b regression tests pinning success-path stamp and failure-path omission.
 
 ### Pending Todos
 
@@ -186,6 +188,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-08T08:30:00Z
+Last session: 2026-05-08T15:04:08.685Z
 Stopped at: Plan 05-07 complete (Phase 5 frontend — Queue + QualityCharts + 5th KpiCard + diagnosis-tag Select; FBCK-02/03/05/06/07 + DASH-01..06). Phase 5 plan execution complete (7/7); awaiting Phase 5 verifier gate before Phase 6 entry.
 Resume file: None
