@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Plan 05-04 complete (EvalDispatcher + cross-task ctx propagation; closes TRCR-04 deferral; EVAL-02/04/05); Plan 05-05 next
-last_updated: "2026-05-08T20:00:00Z"
+stopped_at: Plan 05-05 complete (GET /traces/timeseries adaptive-bucket aggregates DASH-01..04 + extended GET /traces with max_faithfulness FBCK-03 + sort_by=faithfulness_asc FBCK-06); Plan 05-06 next
+last_updated: "2026-05-08T07:30:00.000Z"
 last_activity: 2026-05-08
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 36
-  completed_plans: 33
-  percent: 92
+  completed_plans: 35
+  percent: 97
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 ## Current Position
 
 Phase: 05 (quality-feedback) — EXECUTING
-Plan: 5 of 7
+Plan: 6 of 7
 Status: Ready to execute
 Last activity: 2026-05-08
 
-Progress: [█████████░] 92%
+Progress: [██████████] 97%
 
 ## Performance Metrics
 
@@ -151,6 +151,9 @@ Recent decisions affecting current work:
 - [Phase 5]: Plan 05-04 pattern: Cross-task contextvar parentage — (1) construct stub Span in pipeline; (2) set_current_span(stub) + capture_context() in caller BEFORE the iterator's finally; (3) attach_context(snapshot) in dispatcher worker; (4) current_span() in worker reads stub. Reusable for any async-after-response work (Phase 6 regression CLI; v2 multi-judge ensemble).
 - [Phase 5]: Plan 05-04 pattern: Field(exclude=True) for in-process model attachments — when a Pydantic model's wire shape is contractually fixed but in-process consumers need richer state, use exclude=True with arbitrary_types_allowed=True for non-Pydantic types (e.g., contextvars.Context). chunks_for_judge typed list[Any] (not list[RetrievedChunk]) so duck-typed test doubles still work; the typed contract is one layer down at the dispatcher's chunks: list[RetrievedChunk] parameter.
 - [Phase 5]: Plan 05-04 pattern: Source-position drain-ordering test — inspect.getsource(lifespan) + re.search for both call sites + assert ordering. Catches future re-orderings at PR review time with no live infra needed. Reusable for any ordering invariant in lifespan/finally chains.
+- [Phase 5]: Plan 05-05: GET /traces/timeseries adaptive-bucket aggregate endpoint (DASH-01..04) ships — _BUCKET_BY_WINDOW dict maps Literal[1h|24h|7d|30d] → (date_trunc unit, generate_series interval, since interval); hard-coded so user input never enters the SQL string (T-05-05-01). PostgresTraceStore.timeseries(window) uses generate_series + LEFT JOIN to preserve empty-bucket NULL rows (D-5.07; load-bearing for frontend Tremor connectNulls=false). PERCENTILE_CONT(0.5/0.95) for latency, AVG faithfulness, ratio CASE feedback_down. Returns list[dict] (NOT Pydantic) — preserves D-2.27 (tracer/ MUST NOT import api/). Special-case 5-min bucketing via subtraction trick because date_trunc supports only natural intervals. Route registered BEFORE GET /traces/{trace_id} so the literal "timeseries" segment doesn't get UUID-parsed. WHERE latency_ms IS NOT NULL excludes in-flight (T-05-05-07). 6 schema tests + 8 integration tests TS1-TS8. Commit 4b68502.
+- [Phase 5]: Plan 05-05: GET /traces extended with max_faithfulness (FBCK-03) + sort_by=faithfulness_asc (FBCK-06) — Annotated [0.0, 1.0] filter excludes NULL faithfulness rows when set ("judge has not yet scored" is not "judge-flagged"); Literal-validated sort_by composes ORDER BY from a hard-coded set ("faithfulness ASC NULLS LAST, started_at DESC, id DESC" for asc; default created_at_desc preserves Phase 4) — no SQL injection (T-05-05-02/03). TraceListFilters extended with both fields. Cursor pagination v1 limitation: cursor still encodes (started_at, id); page boundaries follow started_at even when sorting by faithfulness. Acceptable for <1000 judge-flagged traces (T-05-05-06 ACCEPTED). 8 net new integration tests EX1-EX8; 303/1s suite green at task close. Commit 6eed298.
+- [Phase 5]: Plan 05-05 pattern: Adaptive bucketing with NULL-preserving LEFT JOIN — `WITH buckets AS (SELECT generate_series(...) AS bucket_start)` then `SELECT bucket_start, COUNT(*), AVG(...) FROM buckets LEFT JOIN trace_data ON date_trunc('unit', started_at) = bucket_start GROUP BY bucket_start`. Empty buckets land as rows with NULL aggregates and request_count=0; the frontend's connectNulls=false setting renders these as visible gaps (visually distinct from low-faithfulness scores). Reusable for any time-series aggregation that needs "what happened in the empty hours" semantics.
 
 ### Pending Todos
 
@@ -173,6 +176,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-08T20:00:00Z
-Stopped at: Plan 05-04 complete (EvalDispatcher + cross-task ctx propagation; closes TRCR-04 deferral; EVAL-02/04/05); Plan 05-05 next
+Last session: 2026-05-08T07:30:00Z
+Stopped at: Plan 05-05 complete (GET /traces/timeseries DASH-01..04 + extended /traces with max_faithfulness FBCK-03 + sort_by=faithfulness_asc FBCK-06); Plan 05-06 next
 Resume file: None
