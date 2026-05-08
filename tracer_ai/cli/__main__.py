@@ -36,11 +36,13 @@ def _build_parser() -> argparse.ArgumentParser:
     """Construct the argparse subcommand tree.
 
     The ``ingest`` subcommand uses a mutually-exclusive --source / --urls
-    argument group; exactly one is required.
+    argument group; exactly one is required. The ``calibrate`` subcommand
+    nests two sub-subcommands: ``label`` (interactive trace labeling) and
+    ``threshold`` (best-F1 sweep + suggested env value); D-5.11 / D-5.12.
     """
     parser = argparse.ArgumentParser(
         prog="tracer-ai",
-        description="tracer-ai CLI: ingest, query, and admin operations",
+        description="tracer-ai CLI: ingest, calibrate, and admin operations",
     )
     sub = parser.add_subparsers(dest="command", required=True)
     ingest = sub.add_parser("ingest", help="Ingest a corpus into the chunks table")
@@ -60,6 +62,45 @@ def _build_parser() -> argparse.ArgumentParser:
         type=int,
         default=64,
         help="Embedding batch size (default: 64)",
+    )
+
+    # calibrate subcommand group (D-5.11 / D-5.12 / EVAL-06).
+    calibrate = sub.add_parser(
+        "calibrate",
+        help="Calibrate the bad-answer threshold against hand-labeled traces",
+    )
+    cal_sub = calibrate.add_subparsers(dest="cal_command", required=True)
+
+    label = cal_sub.add_parser(
+        "label",
+        help="Walk N traces interactively; append labels to YAML",
+    )
+    label.add_argument(
+        "--n",
+        type=int,
+        default=30,
+        help="Number of traces to label (default: 30)",
+    )
+    label.add_argument(
+        "--strategy",
+        choices=["recent", "random", "stratified"],
+        default="recent",
+    )
+    label.add_argument(
+        "--out",
+        type=Path,
+        default=Path("docs/eval/calibration_set.yaml"),
+    )
+
+    threshold = cal_sub.add_parser(
+        "threshold",
+        help="Run best-F1 sweep and print suggested env value",
+    )
+    threshold.add_argument(
+        "--in",
+        dest="in_path",
+        type=Path,
+        default=Path("docs/eval/calibration_set.yaml"),
     )
     return parser
 
@@ -91,15 +132,62 @@ async def _run_ingest_async(
         await pool.close()
 
 
+def _dispatch_calibrate(args: argparse.Namespace) -> int:
+    """Dispatch the ``calibrate {label|threshold}`` subcommand. Returns exit code."""
+    # Local import keeps the eval/ module out of the ingest cold path.
+    from tracer_ai.eval.calibrate import (
+        render_sweep_report,
+        run_label,
+        run_threshold_sweep,
+    )
+
+    if args.cal_command == "label":
+        # Short-circuit BEFORE asyncio.run + asyncpg pool when n <= 0 so the CLI
+        # smoke-test `tracer-ai calibrate label --n 0` does NOT require a live
+        # DATABASE_URL (CI test CLI8). Per D-2.37 this file is the print() allowlist.
+        if args.n <= 0:
+            print("Nothing to label (--n 0)")
+            return 0
+        try:
+            result = asyncio.run(
+                run_label(n=args.n, strategy=args.strategy, out_path=args.out),
+            )
+        except Exception as exc:  # surface any failure as exit 2
+            print(f"calibrate label failed: {exc}", file=sys.stderr)
+            return 2
+        print(
+            f"calibrate label complete: {result['entries_added']} entries added, "
+            f"{result['skipped']} skipped. Wrote to {args.out}",
+        )
+        return 0
+
+    if args.cal_command == "threshold":
+        try:
+            sweep = run_threshold_sweep(args.in_path)
+        except (FileNotFoundError, ValueError) as exc:
+            print(f"calibrate threshold failed: {exc}", file=sys.stderr)
+            return 2
+        print(render_sweep_report(sweep))
+        return 0
+
+    # argparse's required=True on cal_command makes this unreachable, but the
+    # explicit guard keeps the type-checker happy.
+    print(f"unknown calibrate sub-subcommand: {args.cal_command!r}", file=sys.stderr)
+    return 2
+
+
 def main(argv: list[str] | None = None) -> int:
     """CLI entry point. Returns the process exit code."""
     parser = _build_parser()
     args = parser.parse_args(argv)
 
+    if args.command == "calibrate":
+        return _dispatch_calibrate(args)
+
     if args.command != "ingest":
         # argparse's required=True on the subcommand dest already covers this,
         # but the explicit guard keeps the type-checker happy and documents intent.
-        parser.error("only 'ingest' is supported in Phase 3")
+        parser.error(f"unknown command: {args.command!r}")
         return 2  # unreachable -- parser.error sys.exits 2.
 
     urls_list: list[str] | None = None
