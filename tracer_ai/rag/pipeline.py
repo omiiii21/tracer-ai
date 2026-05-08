@@ -64,6 +64,7 @@ from tracer_ai.rag.types import (
     StreamEvent,
     TextDelta,
 )
+from tracer_ai.tracer.context import capture_context, set_current_span
 from tracer_ai.tracer.span import (
     GEN_AI_PROVIDER_NAME,
     GEN_AI_REQUEST_MODEL,
@@ -131,8 +132,12 @@ class Pipeline:
         list[RetrievedChunk],
         AsyncIterator[str],
         dict[str, int | float],
+        Span,
     ]:
-        """Run embed -> retrieve -> assemble; return (trace_id, chunks, text_iter, usage_holder).
+        """Run embed -> retrieve -> assemble; return tuple including a root
+        ``rag.request`` stub Span for cross-task ctx propagation.
+
+        Tuple shape: ``(trace_id, chunks, text_iter, usage_holder, root_for_ctx)``.
 
         The returned ``text_iter`` is an async iterator that yields each LLM
         text-delta string and, in its ``finally`` block, populates
@@ -142,6 +147,15 @@ class Pipeline:
         rag.retrieve, rag.prompt_assemble, rag.llm_call) are emitted here on
         success AND on mid-flight failure (per-stage try/finally per
         Pitfall 7.8 / T-03-05-04).
+
+        Phase 5 D-5.10 / Pitfall #1: ``root_for_ctx`` is a stub ``Span``
+        carrying ``trace_id`` + ``root_span_id`` + ``started_at`` -- the
+        SSE-friendly ``run_chat_stream`` caller stores this on the
+        contextvar BEFORE consuming the iterator (which would otherwise
+        end ``rag.request`` inside its finally), then ``capture_context()``
+        snapshots while the rag.request span is still "live". The
+        ``EvalDispatcher`` re-attaches the snapshot inside the worker task
+        so ``rag.eval`` becomes a child of ``rag.request``.
         """
         trace_id: UUID = uuid4()
         root_span_id: UUID = uuid4()
@@ -376,7 +390,22 @@ class Pipeline:
                     # raised mid-flight or the consumer cancelled iteration.
                     await self._emit_root(trace_id, root_span_id, root_started, root_attrs, t0)
 
-        return trace_id, chunks, _llm_text_iter(), usage_holder
+        # Phase 5 D-5.10 / Pitfall #1: build a stub Span representing rag.request
+        # for the ctx-snapshot that EvalDispatcher will re-attach inside its
+        # worker task. The stub's `attrs` is a snapshot at this point in time
+        # (subsequent stages may further mutate root_attrs in `_emit_root`,
+        # but the dispatcher only needs trace_id + span_id for parentage).
+        root_for_ctx = Span(
+            trace_id=trace_id,
+            span_id=root_span_id,
+            parent_span_id=None,
+            name=_SPAN_REQUEST,
+            started_at=root_started,
+            ended_at=None,
+            attrs=dict(root_attrs),
+            payload=None,
+        )
+        return trace_id, chunks, _llm_text_iter(), usage_holder, root_for_ctx
 
     async def _emit_root(
         self,
@@ -427,7 +456,7 @@ class Pipeline:
         a final ``Final(LLMResult)`` -- the same shape ``Pipeline`` shipped in
         Plan 05. Internally delegates to ``_orchestrate`` (Plan 06 refactor).
         """
-        _trace_id, _chunks, text_iter, usage_holder = await self._orchestrate(query)
+        _trace_id, _chunks, text_iter, usage_holder, _root = await self._orchestrate(query)
         answer_parts: list[str] = []
         async for text in text_iter:
             answer_parts.append(text)
@@ -452,10 +481,30 @@ class Pipeline:
         ``cited_chunks`` are built from the retrieved chunks; ``doc_url`` is
         sourced from ``chunk.metadata["source_url"]`` (populated at ingest
         time per RESEARCH.md s2 line 87) and falls back to "" when missing.
+
+        Phase 5 EVAL-04: BEFORE consuming the text iterator (whose finally
+        block ends rag.request via ``_emit_root``), set the rag.request stub
+        span on the contextvar and snapshot it. The snapshot is attached
+        to ``ChatFinalEvent`` as a ``Field(exclude=True)`` field so the
+        chat SSE generator can pass it to ``EvalDispatcher.enqueue(...)``
+        AFTER yielding the final frame. The dispatcher re-attaches the
+        snapshot inside its worker coroutine so ``current_span()`` returns
+        the rag.request root and the resulting ``rag.eval`` span becomes a
+        child (Pitfall #1).
         """
         t0 = time.perf_counter()
-        trace_id, chunks, text_iter, usage_holder = await self._orchestrate(query)
+        trace_id, chunks, text_iter, usage_holder, root_for_ctx = await self._orchestrate(query)
+
+        # Phase 5 / Pitfall #1: capture the contextvar snapshot BEFORE the
+        # iterator's finally runs `_emit_root` on rag.request. The snapshot
+        # carries `_current_span = root_for_ctx` so the dispatcher worker
+        # task sees the rag.request root via `current_span()`.
+        set_current_span(root_for_ctx)
+        ctx_snapshot = capture_context()
+
+        answer_parts: list[str] = []
         async for text in text_iter:
+            answer_parts.append(text)
             yield TextDelta(text=text)
         cited = [
             CitedChunk(
@@ -467,6 +516,7 @@ class Pipeline:
             )
             for i, c in enumerate(chunks)
         ]
+        full_answer = "".join(answer_parts)
         latency_ms = int((time.perf_counter() - t0) * 1000)
         yield ChatFinalEvent(
             trace_id=str(trace_id),
@@ -475,4 +525,9 @@ class Pipeline:
             input_tokens=int(usage_holder["input_tokens"]),
             output_tokens=int(usage_holder["output_tokens"]),
             estimated_cost_usd=float(usage_holder["estimated_cost_usd"]),
+            # Phase 5 EVAL-04 private fields (Field(exclude=True) -- not on the wire):
+            ctx_snapshot=ctx_snapshot,
+            chunks_for_judge=chunks,
+            query=query,
+            answer=full_answer,
         )

@@ -139,9 +139,19 @@ class ChatFinalEvent(BaseModel):
     fields: trace_id (to link to the trace explorer), cited_chunks (citation
     list), latency_ms (end-to-end pipeline latency), and the token + cost
     accounting fields. JSON-serialized as the SSE ``data`` line.
+
+    Phase 5 EVAL-04 extension (D-5.10): four additional in-process-only fields
+    carry the contextvar snapshot, the full RetrievedChunk list, the original
+    query, and the assembled answer text to the SSE generator so it can call
+    ``EvalDispatcher.enqueue(...)`` AFTER yielding the ``final`` frame. All
+    four use ``Field(exclude=True)`` so the wire shape from
+    ``model_dump(mode="json")`` is byte-unchanged from Phase 4.
+    ``arbitrary_types_allowed=True`` is required because ``contextvars.Context``
+    is not a Pydantic-known type (we type as ``Any`` to avoid runtime
+    validation cost on the hot path).
     """
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
 
     trace_id: str
     cited_chunks: list[CitedChunk]
@@ -149,3 +159,21 @@ class ChatFinalEvent(BaseModel):
     input_tokens: int
     output_tokens: int
     estimated_cost_usd: float
+
+    # === Phase 5 EVAL-04 private fields (D-5.10; never serialized) ===
+    # ``Field(exclude=True)`` keeps them out of model_dump(mode="json") so the
+    # SSE final frame body is unchanged on the wire. They are read in-process
+    # by tracer_ai/api/chat.py to dispatch the judge task.
+    #
+    # ``chunks_for_judge`` is typed ``list[Any]`` (not ``list[RetrievedChunk]``)
+    # because this field is in-process pass-through only -- the SSE generator
+    # forwards whatever the pipeline produced to ``EvalDispatcher.enqueue``,
+    # which itself declares the runtime contract via its ``chunks: list[RetrievedChunk]``
+    # parameter. In production all elements are real RetrievedChunk instances;
+    # the relaxed typing here avoids strict-mode rejection of duck-typed test
+    # doubles (e.g. tests/perf/test_trace_write_p95.py's _FakeChunk) without
+    # weakening the dispatcher's typed contract one layer down.
+    ctx_snapshot: Any | None = Field(default=None, exclude=True)
+    chunks_for_judge: list[Any] = Field(default_factory=list, exclude=True)
+    query: str = Field(default="", exclude=True)
+    answer: str = Field(default="", exclude=True)

@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import AsyncIterator
+from uuid import UUID
 
 import structlog
 from fastapi import APIRouter, Request
@@ -58,6 +59,16 @@ async def chat(body: ChatRequest, request: Request) -> StreamingResponse:
     single trailing ``ChatFinalEvent`` as an ``event: final`` SSE frame.
     On any exception, emits a generic ``event: error`` frame and logs the
     full exception via structlog (T-03-06-10).
+
+    Phase 5 EVAL-04 / D-5.10: AFTER yielding the ``event: final`` frame, the
+    SSE generator dispatches a judge task via
+    ``request.app.state.eval_dispatcher.enqueue(...)``. The dispatcher uses
+    ``asyncio.create_task`` so this never blocks the SSE response. Pitfall
+    #3: any exception in dispatch is swallowed + warn-logged (eval failures
+    must NEVER fail user requests). The ctx_snapshot was captured by
+    ``Pipeline.run_chat_stream`` BEFORE the iterator's finally ran
+    ``_emit_root`` on rag.request (Pitfall #1), so the eval task sees
+    ``current_span()`` as the rag.request root.
     """
     pipeline = request.app.state.pipeline
 
@@ -71,6 +82,24 @@ async def chat(body: ChatRequest, request: Request) -> StreamingResponse:
                     payload = ev.model_dump(mode="json")
                     frame = f"event: final\ndata: {json.dumps(payload)}\n\n"
                     yield frame.encode("utf-8")
+                    # Phase 5 D-5.10: dispatch judge AFTER yielding final frame.
+                    # Pitfall #3 -- never re-raise into the SSE generator.
+                    dispatcher = getattr(request.app.state, "eval_dispatcher", None)
+                    if dispatcher is not None and ev.ctx_snapshot is not None:
+                        try:
+                            dispatcher.enqueue(
+                                trace_id=UUID(ev.trace_id),
+                                ctx_snapshot=ev.ctx_snapshot,
+                                answer=ev.answer,
+                                chunks=ev.chunks_for_judge,
+                                query=ev.query,
+                            )
+                        except Exception as exc:
+                            log.warning(
+                                "eval.enqueue_swallowed",
+                                error=str(exc),
+                                trace_id=ev.trace_id,
+                            )
         except Exception as exc:
             log.exception("chat_stream_error", error=str(exc))
             err_frame = f"event: error\ndata: {json.dumps({'message': str(exc)})}\n\n"

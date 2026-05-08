@@ -33,6 +33,8 @@ from fastapi import FastAPI
 
 from tracer_ai.config import settings
 from tracer_ai.errors import CorpusEmbeddingMismatchError
+from tracer_ai.eval.dispatcher import EvalDispatcher
+from tracer_ai.eval.llm_judge import AnthropicJudge
 from tracer_ai.rag.embedder import VoyageEmbedder
 from tracer_ai.rag.llm import AnthropicLLM
 from tracer_ai.rag.pipeline import Pipeline
@@ -131,6 +133,24 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             llm=llm.name,
             writer="PostgresTraceWriter",
         )
+
+        # Phase 5 D-5.10: construct EvalDispatcher AFTER writer + pool are
+        # ready. AnthropicJudge construction may fail in dev (e.g. missing
+        # ANTHROPIC_API_KEY); on failure, app.state.eval_dispatcher = None
+        # and the chat SSE generator's getattr fallback skips dispatch.
+        eval_dispatcher: EvalDispatcher | None = None
+        try:
+            judge = AnthropicJudge()
+            eval_dispatcher = EvalDispatcher(judge=judge, writer=writer, pool=pool)
+            log.info(
+                "eval.dispatcher_ready",
+                judge=judge.name,
+                concurrency=settings.judge_concurrency,
+            )
+        except Exception as exc:
+            log.warning("eval.dispatcher_construction_skipped", error=str(exc))
+            eval_dispatcher = None
+        app.state.eval_dispatcher = eval_dispatcher
     except Exception as exc:
         log.warning("pipeline_construction_skipped", error=str(exc))
         # Fallback: NoopTraceWriter; no consumer task started.
@@ -142,10 +162,23 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         app.state.consumer = None
         app.state.consumer_task = None
         app.state.queue = None
+        app.state.eval_dispatcher = None
 
     try:
         yield
     finally:
+        # Phase 5 D-5.10: drain the EvalDispatcher BEFORE the SpanConsumer.
+        # Eval tasks may emit rag.eval spans into the consumer's queue, so
+        # the consumer must outlive the dispatcher. asyncio.wait_for bounds
+        # total drain time even if the dispatcher itself hangs; on TimeoutError
+        # the warn-log fires and the lifespan continues to the consumer drain.
+        eval_disp = getattr(app.state, "eval_dispatcher", None)
+        if eval_disp is not None:
+            try:
+                await asyncio.wait_for(eval_disp.drain(timeout=5.0), timeout=5.0)
+            except TimeoutError:
+                log.warning("eval.dispatcher_drain_incomplete")
+
         # D-4.10: 5s drain -> cancel consumer task -> close pool.
         if consumer is not None and queue_obj is not None:
             consumer.stop_accepting = True
